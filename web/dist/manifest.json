@@ -5,7 +5,7 @@
   "display": "fullscreen",
   "orientation": "landscape",
   "scope": "/twa-iframe/web/dist/",
-  "start_url": "/twa-iframe/web/dist/client.html",
+  "start_url": "/twa-iframe/web/dist/index.html",
   "icons": [
     {
       "src": "/twa-iframe/web/dist/icon192.png",
