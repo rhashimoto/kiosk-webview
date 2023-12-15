@@ -32,5 +32,6 @@
         }
     }]
     
-  </string>  
+  </string>
+  <string name="profile_name">Device Owner</string>
 </resources>

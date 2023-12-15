@@ -10,18 +10,21 @@
         padding: 0;
       }
 
-      iframe {
+      .fullscreen {
         width: 100%;
         height: 100vh;
         border: none;
       }
+
+      .current-conditions {
+        transform: translate(135px, 212px) scale(2);
+      }
     </style>
-  </head>
-  <body>
-    <h1>how now brown cow</h1>
     <script>
       navigator.serviceWorker.register('./sw.js');
     </script>
-    <!-- <iframe src="https://map.purpleair.com/1/mAQI/a10/p604800/cC0#11.58/39.3052/-120.2117"></iframe> -->
-  </body>
+  </head>
+  <body>
+    <div id='PurpleAirWidget_85551_module_AQI_conversion_C5_average_10_layer_standard'>Loading PurpleAir Widget...</div>
+    <script src='https://www.purpleair.com/pa.widget.js?key=64WA8O5Y05B7FSN2&module=AQI&conversion=C5&average=10&layer=standard&container=PurpleAirWidget_85551_module_AQI_conversion_C5_average_10_layer_standard'></script>  </body>
 </html>
