@@ -1,0 +1,10 @@
+{
+  "name": "twa-iframe",
+  "packageManager": "yarn@4.0.2",
+  "scripts": {
+    "start": "yarn web-dev-server --node-resolve"
+  },
+  "devDependencies": {
+    "@web/dev-server": "^0.4.1"
+  }
+}
