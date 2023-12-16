@@ -15,22 +15,29 @@
  */
 package com.shoestringresearch.twa;
 
+import android.app.admin.DevicePolicyManager;
+import android.content.ComponentName;
+import android.content.Context;
 import android.content.pm.ActivityInfo;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 
-
-
-public class LauncherActivity
-        extends com.google.androidbrowserhelper.trusted.LauncherActivity {
-    
-
-    
+public class LauncherActivity extends com.google.androidbrowserhelper.trusted.LauncherActivity {
+    private DevicePolicyManager devicePolicyManager;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+//        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+
+        ComponentName deviceAdmin = new ComponentName(this, DeviceOwnerReceiver.class);
+        devicePolicyManager = (DevicePolicyManager) getSystemService(Context.DEVICE_POLICY_SERVICE);
+        if (devicePolicyManager.isDeviceOwnerApp(getPackageName())) {
+            devicePolicyManager.setLockTaskPackages(deviceAdmin, new String[]{getPackageName()});
+        }
+
         // Setting an orientation crashes the app due to the transparent background on Android 8.0
         // Oreo and below. We only set the orientation on Oreo and above. This only affects the
         // splash screen and Chrome will still respect the orientation.
@@ -43,12 +50,10 @@ public class LauncherActivity
     }
 
     @Override
-    protected Uri getLaunchingUrl() {
-        // Get the original launch Url.
-        Uri uri = super.getLaunchingUrl();
-
-        
-
-        return uri;
+    protected void onResume() {
+        super.onResume();
+        if (devicePolicyManager.isLockTaskPermitted(getPackageName())) {
+            startLockTask();
+        }
     }
 }
