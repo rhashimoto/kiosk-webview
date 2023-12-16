@@ -1,3 +1,5 @@
+const SCALE = 0.95;
+
 navigator.serviceWorker.register('./sw.js');
 navigator.wakeLock.request('screen');
 
@@ -13,8 +15,8 @@ window.addEventListener('load', () => {
             node.style.padding = '0';
             node.style.margin = '0';
             const scaleX = container.clientWidth / node.offsetWidth;
-            const scaleY = 0.95 * container.clientHeight / node.offsetHeight;
-            const scale = Math.min(scaleX, scaleY);
+            const scaleY = container.clientHeight / node.offsetHeight;
+            const scale = SCALE * Math.min(scaleX, scaleY);
             const transform = `scale(${scale})`;
             node.style.transform = transform;
           }
