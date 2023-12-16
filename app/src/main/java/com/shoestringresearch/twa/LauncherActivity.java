@@ -19,10 +19,8 @@ import android.app.admin.DevicePolicyManager;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.pm.ActivityInfo;
-import android.os.BatteryManager;
 import android.os.Build;
 import android.os.Bundle;
-import android.provider.Settings;
 import android.util.Log;
 
 public class LauncherActivity extends com.google.androidbrowserhelper.trusted.LauncherActivity {
@@ -40,19 +38,11 @@ public class LauncherActivity extends com.google.androidbrowserhelper.trusted.La
 
         ComponentName deviceAdmin = new ComponentName(this, DeviceOwnerReceiver.class);
         devicePolicyManager = (DevicePolicyManager) getSystemService(Context.DEVICE_POLICY_SERVICE);
-        if (devicePolicyManager.isDeviceOwnerApp(getPackageName())) {
-            Log.v("LauncherActivity", "app is device owner");
-            int pluggedInto =
-                BatteryManager.BATTERY_PLUGGED_AC |
-                BatteryManager.BATTERY_PLUGGED_USB |
-                BatteryManager.BATTERY_PLUGGED_WIRELESS;
-            devicePolicyManager.setGlobalSetting(
-                deviceAdmin,
-                Settings.Global.STAY_ON_WHILE_PLUGGED_IN,
-                String.valueOf(pluggedInto));
 
-            devicePolicyManager.setLockTaskPackages(deviceAdmin, new String[]{getPackageName()});
-        }
+        // This configuration is supposed to happen in the DeviceAdminReceiver,
+        // but onEnabled() isn't called consistently when set-device-owner
+        // is invoked via adb.
+        DeviceOwnerReceiver.configurePolicy(this, deviceAdmin);
 
         // Setting an orientation crashes the app due to the transparent background on Android 8.0
         // Oreo and below. We only set the orientation on Oreo and above. This only affects the
@@ -69,9 +59,9 @@ public class LauncherActivity extends com.google.androidbrowserhelper.trusted.La
     protected void onResume() {
         super.onResume();
         Log.v("LauncherActivity", "onResume");
-//        if (devicePolicyManager.isLockTaskPermitted(getPackageName())) {
-//            Log.v("LauncherActivity", "startLockTask");
+        if (devicePolicyManager.isLockTaskPermitted(getPackageName())) {
+            Log.v("LauncherActivity", "startLockTask");
 //            startLockTask();
-//        }
+        }
     }
 }
