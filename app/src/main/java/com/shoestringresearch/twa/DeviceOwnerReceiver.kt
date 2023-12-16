@@ -6,6 +6,7 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.os.BatteryManager
+import android.os.Build
 import android.provider.Settings
 import android.util.Log
 import android.widget.Toast
@@ -42,6 +43,11 @@ class DeviceOwnerReceiver : DeviceAdminReceiver() {
                 devicePolicyManager.setLockTaskPackages(
                     adminName,
                     arrayOf<String>(context.packageName))
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                    devicePolicyManager.setLockTaskFeatures(
+                        adminName,
+                        DevicePolicyManager.LOCK_TASK_FEATURE_GLOBAL_ACTIONS)
+                }
             }
         }
     }

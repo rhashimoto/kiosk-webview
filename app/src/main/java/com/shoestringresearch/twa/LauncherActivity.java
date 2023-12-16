@@ -61,7 +61,7 @@ public class LauncherActivity extends com.google.androidbrowserhelper.trusted.La
         Log.v("LauncherActivity", "onResume");
         if (devicePolicyManager.isLockTaskPermitted(getPackageName())) {
             Log.v("LauncherActivity", "startLockTask");
-//            startLockTask();
+            startLockTask();
         }
     }
 }

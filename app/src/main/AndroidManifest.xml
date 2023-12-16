@@ -72,6 +72,7 @@
         <activity android:name="LauncherActivity"
             android:alwaysRetainTaskState="true"
             android:label="@string/launcherName"
+            android:lockTaskMode="if_whitelisted"
             android:exported="true">
             <meta-data android:name="android.support.customtabs.trusted.DEFAULT_URL"
                 android:value="@string/launchUrl" />
