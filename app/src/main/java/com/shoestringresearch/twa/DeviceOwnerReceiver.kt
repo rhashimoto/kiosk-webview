@@ -5,14 +5,15 @@ import android.content.Context
 import android.content.Intent
 import android.util.Log
 
+
 class DeviceOwnerReceiver : DeviceAdminReceiver() {
+    override fun onEnabled(context: Context, intent: Intent) {
+        super.onEnabled(context, intent)
+        Log.v("DeviceOwnerReceiver", "onEnabled")
+    }
 
-    @Override
-    override fun onProfileProvisioningComplete(context: Context, intent: Intent) {
-        Log.i("DeviceOwnerReceiver", "onProfileProvisioningComplete")
-
-        val activityIntent = Intent(context, LauncherActivity::class.java)
-        activityIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        context.startActivity(activityIntent)
+    override fun onDisabled(context: Context, intent: Intent) {
+        super.onDisabled(context, intent)
+        Log.v("DeviceOwnerReceiver", "onDisabled")
     }
 }

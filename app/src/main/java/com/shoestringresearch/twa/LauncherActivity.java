@@ -19,9 +19,11 @@ import android.app.admin.DevicePolicyManager;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.pm.ActivityInfo;
-import android.net.Uri;
+import android.os.BatteryManager;
 import android.os.Build;
 import android.os.Bundle;
+import android.provider.Settings;
+import android.util.Log;
 
 public class LauncherActivity extends com.google.androidbrowserhelper.trusted.LauncherActivity {
     private DevicePolicyManager devicePolicyManager;
@@ -29,12 +31,26 @@ public class LauncherActivity extends com.google.androidbrowserhelper.trusted.La
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        Log.v("LauncherActivity", "onCreate");
 
-//        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        // Using WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON here doesn't
+        // work, probably because the Trusted Web Activity has its own window.
+        // Try https://developer.mozilla.org/en-US/docs/Web/API/WakeLock
+        // on the web side instead.
 
         ComponentName deviceAdmin = new ComponentName(this, DeviceOwnerReceiver.class);
         devicePolicyManager = (DevicePolicyManager) getSystemService(Context.DEVICE_POLICY_SERVICE);
         if (devicePolicyManager.isDeviceOwnerApp(getPackageName())) {
+            Log.v("LauncherActivity", "app is device owner");
+            int pluggedInto =
+                BatteryManager.BATTERY_PLUGGED_AC |
+                BatteryManager.BATTERY_PLUGGED_USB |
+                BatteryManager.BATTERY_PLUGGED_WIRELESS;
+            devicePolicyManager.setGlobalSetting(
+                deviceAdmin,
+                Settings.Global.STAY_ON_WHILE_PLUGGED_IN,
+                String.valueOf(pluggedInto));
+
             devicePolicyManager.setLockTaskPackages(deviceAdmin, new String[]{getPackageName()});
         }
 
@@ -52,8 +68,10 @@ public class LauncherActivity extends com.google.androidbrowserhelper.trusted.La
     @Override
     protected void onResume() {
         super.onResume();
-        if (devicePolicyManager.isLockTaskPermitted(getPackageName())) {
-            startLockTask();
-        }
+        Log.v("LauncherActivity", "onResume");
+//        if (devicePolicyManager.isLockTaskPermitted(getPackageName())) {
+//            Log.v("LauncherActivity", "startLockTask");
+//            startLockTask();
+//        }
     }
 }
