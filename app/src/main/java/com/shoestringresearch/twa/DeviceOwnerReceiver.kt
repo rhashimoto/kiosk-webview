@@ -41,9 +41,6 @@ class DeviceOwnerReceiver : DeviceAdminReceiver() {
                     Settings.Global.STAY_ON_WHILE_PLUGGED_IN, pluggedInto.toString()
                 )
 
-                devicePolicyManager.clearPackagePersistentPreferredActivities(
-                    adminName,
-                    context.packageName)
 //                // Automatically start the activity on device start.
 //                val filter = IntentFilter(Intent.ACTION_MAIN)
 //                filter.addCategory(Intent.CATEGORY_HOME)
