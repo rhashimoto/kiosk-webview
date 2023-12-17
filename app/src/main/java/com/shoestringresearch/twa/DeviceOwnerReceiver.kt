@@ -11,6 +11,9 @@ import android.provider.Settings
 import android.util.Log
 import android.widget.Toast
 
+// Use adb to enable and disable.
+//   adb shell dpm set-device-owner com.shoestringresearch.twa/.DeviceOwnerReceiver
+//   adb shell dpm remove-active-admin com.shoestringresearch.twa/.DeviceOwnerReceiver
 
 class DeviceOwnerReceiver : DeviceAdminReceiver() {
     override fun onEnabled(context: Context, intent: Intent) {
@@ -48,7 +51,7 @@ class DeviceOwnerReceiver : DeviceAdminReceiver() {
 //                val activity = ComponentName(context, HomeActivity::class.java)
 //                devicePolicyManager.addPersistentPreferredActivity(adminName, filter, activity)
 
-                // Prevent the user from changing the activity.
+                // Allow package activities to enter lock task mode.
                 devicePolicyManager.setLockTaskPackages(
                     adminName,
                     arrayOf<String>(context.packageName))
