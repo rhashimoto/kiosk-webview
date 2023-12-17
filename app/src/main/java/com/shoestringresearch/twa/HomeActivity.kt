@@ -9,11 +9,12 @@ import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.webkit.WebView
-
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 
 class HomeActivity: Activity() {
     private lateinit var devicePolicyManager: DevicePolicyManager
-
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -40,6 +41,13 @@ class HomeActivity: Activity() {
         } else {
             ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
         }
+
+        // Hide system bars.
+        val windowInsetsController =
+            WindowCompat.getInsetsController(window, window.decorView)
+        windowInsetsController.hide(WindowInsetsCompat.Type.systemBars())
+        windowInsetsController.systemBarsBehavior =
+            WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
     }
 
     override fun onResume() {
@@ -49,9 +57,5 @@ class HomeActivity: Activity() {
             Log.v("LauncherActivity", "startLockTask")
             startLockTask()
         }
-
-//        // Open the TWA.
-//        val intent = Intent(this, LauncherActivity::class.java)
-//        startActivity(intent)
     }
 }
