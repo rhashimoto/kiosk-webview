@@ -142,7 +142,6 @@
         </activity>
 
         <activity android:name=".HomeActivity"
-            android:alwaysRetainTaskState="true"
             android:launchMode="singleInstance"
             android:excludeFromRecents="true"
             android:exported="true">
