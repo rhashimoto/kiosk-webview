@@ -18,20 +18,11 @@ import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Toast
+import androidx.core.content.edit
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
-import androidx.datastore.core.DataStore
-import androidx.datastore.preferences.core.Preferences
-import androidx.datastore.preferences.core.booleanPreferencesKey
-import androidx.datastore.preferences.core.edit
-import androidx.datastore.preferences.preferencesDataStore
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.runBlocking
-
-val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
-val IS_LOCK_TASK_KEY = booleanPreferencesKey("isLockTaskKey")
+import androidx.preference.PreferenceManager
 
 const val RELOAD_DELAY_MILLIS = 2L * 60L * 1000L
 val CHEAT_CODE = listOf(
@@ -65,10 +56,15 @@ class HomeActivity: Activity() {
         webView.webViewClient = CustomWebViewClient(mainLooper)
         setContentView(webView)
 
-        webView.loadUrl("https://rhashimoto.github.io/twa-iframe/web/dist/")
+        val prefs = PreferenceManager.getDefaultSharedPreferences(this)
+        webView.loadUrl(prefs.getString("url", "about:blank") ?: "")
 
         requestedOrientation = if (Build.VERSION.SDK_INT > Build.VERSION_CODES.O) {
-            ActivityInfo.SCREEN_ORIENTATION_USER_PORTRAIT
+            if (prefs.getString("orientation", "portrait") == "portrait") {
+                ActivityInfo.SCREEN_ORIENTATION_USER_PORTRAIT
+            } else {
+                ActivityInfo.SCREEN_ORIENTATION_USER_LANDSCAPE
+            }
         } else {
             ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
         }
@@ -85,19 +81,13 @@ class HomeActivity: Activity() {
         super.onResume()
 
         if (devicePolicyManager.isLockTaskPermitted(packageName)) {
-            runBlocking {
-                dataStore.data.map { preferences ->
-                    preferences[IS_LOCK_TASK_KEY] ?: false
-                }.first { isLockTask ->
-                    if (isLockTask) {
-                        Log.v("HomeActivity", "startLockTask")
-                        this@HomeActivity.startLockTask()
-                    } else {
-                        Log.v("HomeActivity", "stopLockTask")
-                        this@HomeActivity.stopLockTask()
-                    }
-                    true
-                }
+            val prefs = PreferenceManager.getDefaultSharedPreferences(this)
+            if (prefs.getBoolean("lock", false)) {
+                Log.v("HomeActivity", "startLockTask")
+                startLockTask()
+            } else {
+                Log.v("HomeActivity", "stopLockTask")
+                stopLockTask()
             }
         }
     }
@@ -118,21 +108,17 @@ class HomeActivity: Activity() {
         }
 
         if (keyCodes == CHEAT_CODE) {
-            Log.v("HomeActivity", "cheat code recognized")
-            runBlocking {
-                dataStore.edit { preferences ->
-                    val isLockTask = preferences[IS_LOCK_TASK_KEY] ?: false
-                    preferences[IS_LOCK_TASK_KEY] = !isLockTask
-                    Log.v("HomeActivity", "Lock task ${!isLockTask}")
-
-                    runOnUiThread {
-                        Toast.makeText(
-                            applicationContext,
-                            "Lock task ${!isLockTask}",
-                            Toast.LENGTH_SHORT).show()
-                    }
-                }
+            val prefs = PreferenceManager.getDefaultSharedPreferences(this)
+            val newValue = !prefs.getBoolean("lock", false)
+            prefs.edit {
+                putBoolean("lock", newValue)
             }
+
+            Log.v("HomeActivity", "Lock task $newValue")
+            Toast.makeText(
+                applicationContext,
+                "Lock task $newValue",
+                Toast.LENGTH_SHORT).show()
         }
     }
 }
