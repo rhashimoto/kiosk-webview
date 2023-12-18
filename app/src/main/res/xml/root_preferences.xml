@@ -1,0 +1,22 @@
+<PreferenceScreen xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <EditTextPreference
+        app:defaultValue="https://www.google.com/"
+        app:key="url"
+        app:title="URL"
+        app:useSimpleSummaryProvider="true" />
+
+    <ListPreference
+        app:defaultValue="portrait"
+        app:entries="@array/orientation_entries"
+        app:entryValues="@array/orientation_values"
+        app:key="orientation"
+        app:title="Orientation"
+        app:useSimpleSummaryProvider="true" />
+
+    <SwitchPreferenceCompat
+        app:defaultValue="false"
+        app:key="lock"
+        app:title="Lock task" />
+
+</PreferenceScreen>
