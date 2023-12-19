@@ -6,7 +6,6 @@ import android.app.admin.DevicePolicyManager
 import android.content.ComponentName
 import android.content.Context
 import android.content.pm.ActivityInfo
-import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -54,15 +53,12 @@ class HomeActivity: Activity() {
         val prefs = PreferenceManager.getDefaultSharedPreferences(this)
         webView.loadUrl(prefs.getString("url", "about:blank") ?: "")
 
-        requestedOrientation = if (Build.VERSION.SDK_INT > Build.VERSION_CODES.O) {
+        requestedOrientation =
             if (prefs.getString("orientation", "portrait") == "portrait") {
                 ActivityInfo.SCREEN_ORIENTATION_USER_PORTRAIT
             } else {
                 ActivityInfo.SCREEN_ORIENTATION_USER_LANDSCAPE
             }
-        } else {
-            ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
-        }
 
         // Hide system bars.
         val windowInsetsController =
@@ -138,7 +134,7 @@ private class CustomWebViewClient(val looper: Looper): WebViewClient() {
         error: WebResourceError
     ) {
         super.onReceivedError(view, request, error)
-        Log.e("HomeActivity", "onReceivedError ${request.url} ${error.description}")
+        Log.e("HomeActivity", "onReceivedError ${request.url} $error")
         scheduleReload(view)
     }
 
