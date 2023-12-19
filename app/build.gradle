@@ -24,6 +24,8 @@ android {
     defaultConfig {
         applicationId "com.shoestringresearch.twa"
         minSdk 21
+        //noinspection EditedTargetSdkVersion
+        targetSdk 34
         versionCode 1
         versionName "1"
 
@@ -55,24 +57,20 @@ android {
     }
 }
 
-repositories {
-    
-}
-
 dependencies {
     implementation 'androidx.appcompat:appcompat:1.6.1'
     implementation 'androidx.preference:preference-ktx:1.2.1'
     implementation 'com.google.android.material:material:1.11.0'
-    constraints {
-        // Fix duplicate class errors.
-        // https://dev.to/retyui/fix-react-native-android-builds-duplicate-class-kotlincollections-found-in-modules-jetified-kotlin-stdlib-180-2ca7
-        implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.8.10") {
-            because("kotlin-stdlib-jdk7 is now a part of kotlin-stdlib")
-        }
-        implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.8.10") {
-            because("kotlin-stdlib-jdk8 is now a part of kotlin-stdlib")
-        }
-    }
+//    constraints {
+//        // Fix duplicate class errors.
+//        // https://dev.to/retyui/fix-react-native-android-builds-duplicate-class-kotlincollections-found-in-modules-jetified-kotlin-stdlib-180-2ca7
+//        implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.8.10") {
+//            because("kotlin-stdlib-jdk7 is now a part of kotlin-stdlib")
+//        }
+//        implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.8.10") {
+//            because("kotlin-stdlib-jdk8 is now a part of kotlin-stdlib")
+//        }
+//    }
     implementation fileTree(include: ['*.jar'], dir: 'libs')
     
     implementation 'androidx.core:core-ktx:1.12.0'
