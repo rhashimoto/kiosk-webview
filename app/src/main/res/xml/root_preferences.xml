@@ -19,4 +19,10 @@
         app:key="lock"
         app:title="Lock task" />
 
+    <EditTextPreference
+        app:defaultValue="ududd"
+        app:key="code"
+        app:title="Unlock code"
+        app:useSimpleSummaryProvider="true" />
+
 </PreferenceScreen>

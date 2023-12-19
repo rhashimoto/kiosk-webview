@@ -25,16 +25,11 @@ import androidx.core.view.WindowInsetsControllerCompat
 import androidx.preference.PreferenceManager
 
 const val RELOAD_DELAY_MILLIS = 2L * 60L * 1000L
-val CHEAT_CODE = listOf(
-    KeyEvent.KEYCODE_VOLUME_DOWN,
-    KeyEvent.KEYCODE_VOLUME_DOWN,
-    KeyEvent.KEYCODE_VOLUME_UP,
-    KeyEvent.KEYCODE_VOLUME_DOWN,
-)
+const val CODE_TIMEOUT = 10L * 1000L
 
 class HomeActivity: Activity() {
     private lateinit var devicePolicyManager: DevicePolicyManager
-    private val keyCodes = ArrayDeque<Int>()
+    private val code = StringBuilder()
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -93,33 +88,37 @@ class HomeActivity: Activity() {
     }
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
-        if (event.keyCode == KeyEvent.KEYCODE_VOLUME_UP ||
-            event.keyCode == KeyEvent.KEYCODE_VOLUME_DOWN) {
-            Log.v("HomeActivity", "${event.keyCode}")
-            handleKeyCode(event.keyCode)
+        val token = when (event.keyCode) {
+            KeyEvent.KEYCODE_VOLUME_UP -> 'u'
+            KeyEvent.KEYCODE_VOLUME_DOWN-> 'd'
+            else -> null
+        }
+
+        if (token != null) {
+            code.append(token)
+            Log.v("HomeActivity", "code $code")
+            if (code.length == 1) {
+                // When the first token is received, schedule the code test.
+                Handler(mainLooper).postDelayed({
+                    val prefs = PreferenceManager.getDefaultSharedPreferences(this)
+                    if (prefs.getString("code", "") == code.toString()) {
+                        prefs.edit {
+                            putBoolean("lock", false)
+                        }
+
+                        Log.v("HomeActivity", "Unlocked")
+                        Toast.makeText(
+                            applicationContext,
+                            "Unlocked",
+                            Toast.LENGTH_SHORT).show()
+                    } else {
+                        Log.v("HomeActivity", "Invalid code $code")
+                    }
+                    code.setLength(0)
+                }, CODE_TIMEOUT)
+            }
         }
         return super.onKeyDown(keyCode, event)
-    }
-
-    private fun handleKeyCode(keyCode: Int) {
-        keyCodes.addLast(keyCode)
-        while (keyCodes.size > CHEAT_CODE.size) {
-            keyCodes.removeFirst()
-        }
-
-        if (keyCodes == CHEAT_CODE) {
-            val prefs = PreferenceManager.getDefaultSharedPreferences(this)
-            val newValue = !prefs.getBoolean("lock", false)
-            prefs.edit {
-                putBoolean("lock", newValue)
-            }
-
-            Log.v("HomeActivity", "Lock task $newValue")
-            Toast.makeText(
-                applicationContext,
-                "Lock task $newValue",
-                Toast.LENGTH_SHORT).show()
-        }
     }
 }
 
