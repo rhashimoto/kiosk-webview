@@ -29,8 +29,15 @@ android {
         versionCode 1
         versionName "1"
 
+        Properties properties = new Properties()
+        if (rootProject.file("local.properties").exists()) {
+            properties.load(rootProject.file("local.properties").newDataInputStream())
+        }
+
         // The name for the application
         resValue "string", "appName", "WebView Kiosk"
+
+        resValue "string", "default_unlock_code", properties.getProperty("default.unlockCode", "")
     }
     buildTypes {
         release {

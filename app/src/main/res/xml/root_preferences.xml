@@ -20,7 +20,7 @@
         app:title="Lock task" />
 
     <EditTextPreference
-        app:defaultValue="ududd"
+        app:defaultValue="@string/default_unlock_code"
         app:key="code"
         app:title="Unlock code"
         app:useSimpleSummaryProvider="true" />
