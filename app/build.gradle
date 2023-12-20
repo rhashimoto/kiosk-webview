@@ -19,10 +19,10 @@ plugins {
 }
 
 android {
-    namespace "com.shoestringresearch.twa"
+    namespace "com.shoestringresearch.kiosk.webview"
     compileSdk 34
     defaultConfig {
-        applicationId "com.shoestringresearch.twa"
+        applicationId "com.shoestringresearch.kiosk.webview"
         minSdk 21
         //noinspection EditedTargetSdkVersion
         targetSdk 34

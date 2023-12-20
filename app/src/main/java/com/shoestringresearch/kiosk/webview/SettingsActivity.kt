@@ -1,4 +1,4 @@
-package com.shoestringresearch.twa
+package com.shoestringresearch.kiosk.webview
 
 import android.os.Bundle
 import android.text.InputFilter

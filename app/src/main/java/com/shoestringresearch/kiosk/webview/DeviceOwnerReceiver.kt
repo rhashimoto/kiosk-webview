@@ -1,4 +1,4 @@
-package com.shoestringresearch.twa
+package com.shoestringresearch.kiosk.webview
 
 import android.app.admin.DeviceAdminReceiver
 import android.app.admin.DevicePolicyManager
@@ -12,8 +12,8 @@ import android.util.Log
 import android.widget.Toast
 
 // Use adb to enable and disable.
-//   adb shell dpm set-device-owner com.shoestringresearch.twa/.DeviceOwnerReceiver
-//   adb shell dpm remove-active-admin com.shoestringresearch.twa/.DeviceOwnerReceiver
+//   adb shell dpm set-device-owner com.shoestringresearch.kiosk.webview/.DeviceOwnerReceiver
+//   adb shell dpm remove-active-admin com.shoestringresearch.kiosk.webview/.DeviceOwnerReceiver
 
 class DeviceOwnerReceiver : DeviceAdminReceiver() {
     override fun onEnabled(context: Context, intent: Intent) {
