@@ -16,5 +16,4 @@
 <resources>
   <string name="app_name">WebView Kiosk</string>
   <string name="profile_name">Device Owner</string>
-  <string name="title_activity_settings">SettingsActivity</string>
 </resources>
