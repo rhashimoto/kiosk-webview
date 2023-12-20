@@ -13,17 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.shoestringresearch.twa;
+package com.shoestringresearch.twa
 
+import android.app.Application
 
-
-public class Application extends android.app.Application {
-
-  
-
-  @Override
-  public void onCreate() {
-      super.onCreate();
-      
-  }
+class Application : Application() {
+    override fun onCreate() {
+        super.onCreate()
+    }
 }
