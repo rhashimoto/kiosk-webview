@@ -18,7 +18,20 @@ package com.shoestringresearch.kiosk.webview
 import android.app.Application
 
 class Application : Application() {
+    lateinit var authorizationHelper: AuthorizationHelper
+
     override fun onCreate() {
         super.onCreate()
+
+        authorizationHelper = AuthorizationHelper.Builder(
+            this,
+            "104957196093-r9cv6898ispjkh19ne2g2sq4163p45uc.apps.googleusercontent.com",
+            "com.shoestringresearch.kiosk.webview:/oauth2redirect")
+            .apply {
+                scopes = listOf(
+                    "profile", "email", "openid",
+                    "https://www.googleapis.com/auth/calendar.readonly"
+                )
+            }.build()
     }
 }
