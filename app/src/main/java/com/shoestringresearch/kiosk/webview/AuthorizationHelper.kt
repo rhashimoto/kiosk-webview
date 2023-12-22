@@ -90,7 +90,6 @@ class AuthorizationHelper private constructor(builder: Builder) {
 
     suspend fun getAuthState(): AuthState? = mutex.withLock {
         if (authState == null) return null
-        if (!authState!!.needsTokenRefresh) return authState
 
         val lastTokenResponse = authState!!.lastTokenResponse
         val completionChannel = Channel<Unit>(Channel.BUFFERED)
@@ -99,7 +98,10 @@ class AuthorizationHelper private constructor(builder: Builder) {
                 if (e != null) throw e
 
                 if (authState!!.lastTokenResponse != lastTokenResponse) {
+                    Log.v("AuthorizationHelper", "tokens refreshed")
                     persistAuthState()
+                } else {
+                    Log.v("AuthorizationHelper", "token refresh not needed")
                 }
                 completionChannel.trySend(Unit)
             } catch (e: Exception) {
@@ -175,7 +177,7 @@ class AuthorizationHelper private constructor(builder: Builder) {
             val tokenResponse = tokenResponseChannel.receive()
             authState!!.update(tokenResponse, null)
 
-            Log.v("AuthorizationHelper", "success")
+            Log.v("AuthorizationHelper", "tokens received")
             toast("Authorization succeeded", Toast.LENGTH_SHORT)
             persistAuthState()
         } catch (e: Exception) {

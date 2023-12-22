@@ -39,11 +39,11 @@ class SettingsActivity : AppCompatActivity() {
     private fun onAuthButtonClick() {
         (application as Application).authorizationHelper.createAuthIntent { intent ->
             authIntentLauncher.launch(intent)
-        }
 
-        lifecycleScope.launch {
-            val authState = (application as Application).authorizationHelper.getAuthState()
-            Log.v("SettingsActivity", "token ${authState?.accessToken}")
+            lifecycleScope.launch {
+                val authState = (application as Application).authorizationHelper.getAuthState()
+                Log.v("SettingsActivity", "token ${authState?.accessToken}")
+            }
         }
     }
 
