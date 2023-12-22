@@ -15,6 +15,7 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import net.openid.appauth.AppAuthConfiguration
 import net.openid.appauth.AuthState
 import net.openid.appauth.AuthorizationException
@@ -143,7 +144,7 @@ class AuthorizationHelper private constructor(builder: Builder) {
             }.build()
 
             // Call the application callback with the intent that sends the request.
-            coroutineScope.launch(Dispatchers.Main) {
+            withContext(Dispatchers.Main) {
                 Log.v("AuthorizationHelper", "providing intent")
                 launchIntent(authorizationService.getAuthorizationRequestIntent(request)!!)
             }
@@ -175,11 +176,11 @@ class AuthorizationHelper private constructor(builder: Builder) {
             authState!!.update(tokenResponse, null)
 
             Log.v("AuthorizationHelper", "success")
-            Toast.makeText(application, "Authorization succeeded", Toast.LENGTH_SHORT).show()
+            toast("Authorization succeeded", Toast.LENGTH_SHORT)
             persistAuthState()
         } catch (e: Exception) {
             Log.e("AuthorizationHelper", "auth error: ${e.message}")
-            Toast.makeText(application, "Auth failed ${e.message}", Toast.LENGTH_SHORT).show()
+            toast("Auth failed: ${e.message}", Toast.LENGTH_LONG)
         }
     }
 
@@ -195,6 +196,12 @@ class AuthorizationHelper private constructor(builder: Builder) {
             } else {
                 remove(preferenceName)
             }
+        }
+    }
+
+    private suspend fun toast(message: String, duration: Int) {
+        withContext(Dispatchers.Main) {
+            Toast.makeText(application, message, duration).show()
         }
     }
 

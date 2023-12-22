@@ -5,17 +5,18 @@ import android.text.InputFilter
 import android.text.Spanned
 import android.util.Log
 import android.widget.Button
-import androidx.activity.result.ActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.lifecycleScope
 import androidx.preference.EditTextPreference
 import androidx.preference.PreferenceFragmentCompat
+import kotlinx.coroutines.launch
 
 class SettingsActivity : AppCompatActivity() {
-    private val authLauncher =
+    private val authIntentLauncher =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-            Log.v("SettingActivity", "result $result")
-            handleAuthResult(result)
+            Log.v("SettingsActivity", "auth result $result")
+            (application as Application).authorizationHelper.handleAuthResult(result)
         }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -36,12 +37,14 @@ class SettingsActivity : AppCompatActivity() {
     }
 
     private fun onAuthButtonClick() {
-        val intent = AuthActivity.createAuthIntent(application)
-        authLauncher.launch(intent)
-    }
+        (application as Application).authorizationHelper.createAuthIntent { intent ->
+            authIntentLauncher.launch(intent)
+        }
 
-    private fun handleAuthResult(result: ActivityResult) {
-        AuthActivity.handleAuthResult(application, result)
+        lifecycleScope.launch {
+            val authState = (application as Application).authorizationHelper.getAuthState()
+            Log.v("SettingsActivity", "token ${authState?.accessToken}")
+        }
     }
 
     class SettingsFragment : PreferenceFragmentCompat() {
