@@ -51,6 +51,19 @@
                 <action android:name="android.app.action.DEVICE_ADMIN_ENABLED" />
             </intent-filter>
         </receiver>
+
+
+        <activity android:name="net.openid.appauth.RedirectUriReceiverActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+
+                <data android:scheme="com.shoestringresearch.kiosk.webview"
+                    android:path="/oauth2redirect"/>
+            </intent-filter>
+        </activity>
     </application>
 
 </manifest>

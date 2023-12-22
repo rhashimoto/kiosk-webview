@@ -29,6 +29,10 @@ android {
         versionCode 1
         versionName "1"
 
+        manifestPlaceholders = [
+            appAuthRedirectScheme: 'com.shoestringresearch.kiosk.webview'
+        ]
+
         Properties properties = new Properties()
         if (rootProject.file("local.properties").exists()) {
             properties.load(rootProject.file("local.properties").newDataInputStream())
@@ -68,6 +72,7 @@ dependencies {
     implementation 'androidx.appcompat:appcompat:1.6.1'
     implementation 'androidx.preference:preference-ktx:1.2.1'
     implementation 'com.google.android.material:material:1.11.0'
+    implementation 'net.openid:appauth:0.11.1'
 //    constraints {
 //        // Fix duplicate class errors.
 //        // https://dev.to/retyui/fix-react-native-android-builds-duplicate-class-kotlincollections-found-in-modules-jetified-kotlin-stdlib-180-2ca7
