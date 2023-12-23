@@ -25,8 +25,7 @@ class Application : Application() {
 
         authorizationHelper = AuthorizationHelper.Builder(
             this,
-            "104957196093-r9cv6898ispjkh19ne2g2sq4163p45uc.apps.googleusercontent.com",
-            "$packageName:/oauth2redirect")
+            "104957196093-r9cv6898ispjkh19ne2g2sq4163p45uc.apps.googleusercontent.com")
             .apply {
                 scopes = listOf(
                     "profile", "email", "openid",

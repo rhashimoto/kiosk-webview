@@ -40,6 +40,7 @@ class SettingsActivity : AppCompatActivity() {
         (application as Application).authorizationHelper.createAuthIntent { intent ->
             authIntentLauncher.launch(intent)
 
+            // TODO: Remove this test.
             lifecycleScope.launch {
                 val authState = (application as Application).authorizationHelper.getAuthState()
                 Log.v("SettingsActivity", "token ${authState?.accessToken}")

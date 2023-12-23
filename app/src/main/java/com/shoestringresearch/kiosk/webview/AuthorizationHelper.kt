@@ -35,8 +35,7 @@ class AuthorizationHelper private constructor(builder: Builder) {
     private val coroutineScope: CoroutineScope
     private val preferenceName: String
     private val scopes: Iterable<String>
-    private val urlAuthorization: String
-    private val urlTokenExchange: String
+    private val issuer: String
     private val urlAuthRedirect: String
     private val clientId: String
     private val codeVerifierChallengeMethod: String
@@ -54,8 +53,7 @@ class AuthorizationHelper private constructor(builder: Builder) {
         coroutineScope = builder.coroutineScope
         preferenceName = builder.preferenceName
         scopes = builder.scopes
-        urlAuthorization = builder.urlAuthorization
-        urlTokenExchange = builder.urlTokenExchange
+        issuer = builder.issuer
         urlAuthRedirect = builder.urlAuthRedirect
         clientId = builder.clientId
         codeVerifierChallengeMethod = builder.codeVerifierChallengeMethod
@@ -115,7 +113,7 @@ class AuthorizationHelper private constructor(builder: Builder) {
 
     private suspend fun doAuthorizationFlow(launchIntent: (Intent) -> Unit) = mutex.withLock {
         try {
-            // Create the verifier and challenge.
+            // Create the PKCE verifier and challenge.
             val encoding = Base64.URL_SAFE or Base64.NO_PADDING or Base64.NO_WRAP
             val codeVerifier = run {
                 val bytes = ByteArray(64)
@@ -128,15 +126,22 @@ class AuthorizationHelper private constructor(builder: Builder) {
                 Base64.encodeToString(hash, encoding)
             }
 
-            // Build the authorization request.
-            val authServiceConfig = AuthorizationServiceConfiguration(
-                Uri.parse(urlAuthorization),
-                Uri.parse(urlTokenExchange),
-                null,
-                null
-            )
+            // Query the issuer (e.g. Google) for endpoint configuration.
+            val configurationChannel = Channel<AuthorizationServiceConfiguration>(Channel.BUFFERED)
+            AuthorizationServiceConfiguration.fetchFromIssuer(
+                Uri.parse(issuer)) { serviceConfiguration, ex ->
+                if (ex != null) {
+                    configurationChannel.close(ex)
+                } else if (serviceConfiguration == null) {
+                    configurationChannel.close(Exception("missing configuration"))
+                } else {
+                    configurationChannel.trySend(serviceConfiguration)
+                }
+            }
+
+            // Build the authorization code request.
             val request = AuthorizationRequest.Builder(
-                authServiceConfig,
+                configurationChannel.receive(),
                 clientId,
                 ResponseTypeValues.CODE,
                 Uri.parse(urlAuthRedirect)
@@ -207,17 +212,13 @@ class AuthorizationHelper private constructor(builder: Builder) {
         }
     }
 
-    data class Builder(
-        val application: Application,
-        val clientId: String,
-        val urlAuthRedirect: String) {
-
+    data class Builder(val application: Application, val clientId: String) {
         var coroutineScope = CoroutineScope(Dispatchers.IO)
         var preferenceName = "authorizationState"
-        var scopes: Iterable<String> = listOf("profile", "email", "openid")
-        var urlAuthorization = "https://accounts.google.com/o/oauth2/v2/auth"
-        var urlTokenExchange = "https://www.googleapis.com/oauth2/v4/token"
 
+        var issuer = "https://accounts.google.com"
+        var scopes: Iterable<String> = listOf("profile", "email", "openid")
+        var urlAuthRedirect = "${application.packageName}:/oauth2redirect"
         var codeVerifierChallengeMethod = "S256"
         var messageDigestAlgorithm = "SHA-256"
 
