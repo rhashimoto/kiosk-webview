@@ -23,14 +23,6 @@ class Application : Application() {
     override fun onCreate() {
         super.onCreate()
 
-        authorizationHelper = AuthorizationHelper.Builder(
-            this,
-            "104957196093-r9cv6898ispjkh19ne2g2sq4163p45uc.apps.googleusercontent.com")
-            .apply {
-                scopes = listOf(
-                    "profile", "email", "openid",
-                    "https://www.googleapis.com/auth/calendar.readonly"
-                )
-            }.build()
+        authorizationHelper = AuthorizationHelper.Builder(this).build()
     }
 }

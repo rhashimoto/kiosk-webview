@@ -31,14 +31,15 @@ import org.json.JSONObject
 import java.security.MessageDigest
 import java.security.SecureRandom
 
+const val DEFAULT_ISSUER = "https://accounts.google.com"
+val DEFAULT_SCOPES = listOf("profile", "email", "openid")
+
 class AuthorizationHelper private constructor(builder: Builder) {
     private val application: Application
     private val coroutineScope: CoroutineScope
     private val preferenceName: String
-    private val scopes: Iterable<String>
-    private val issuer: String
     private val urlAuthRedirect: String
-    private val clientId: String
+
     private val codeVerifierChallengeMethod: String
     private val messageDigestAlgorithm: String
 
@@ -53,10 +54,8 @@ class AuthorizationHelper private constructor(builder: Builder) {
         application = builder.application
         coroutineScope = builder.coroutineScope
         preferenceName = builder.preferenceName
-        scopes = builder.scopes
-        issuer = builder.issuer
         urlAuthRedirect = builder.urlAuthRedirect
-        clientId = builder.clientId
+
         codeVerifierChallengeMethod = builder.codeVerifierChallengeMethod
         messageDigestAlgorithm = builder.messageDigestAlgorithm
 
@@ -116,6 +115,19 @@ class AuthorizationHelper private constructor(builder: Builder) {
         config: JSONObject,
         launchIntent: (Intent) -> Unit) = mutex.withLock {
         try {
+            // Extract config file settings.
+            val clientId = config.getString("clientId")
+            val issuer = config.optString("issuer", DEFAULT_ISSUER)
+            val scopes = DEFAULT_SCOPES.toMutableList()
+            if (config.has("scopes")) {
+                scopes.clear()
+                val array = config.getJSONArray("scopes")
+                for (i in 0 until array.length()) {
+                    val scope = array.getString(i)
+                    scopes.add(scope)
+                }
+            }
+
             // Create the PKCE verifier and challenge.
             val encoding = Base64.URL_SAFE or Base64.NO_PADDING or Base64.NO_WRAP
             val codeVerifier = run {
@@ -216,12 +228,9 @@ class AuthorizationHelper private constructor(builder: Builder) {
         }
     }
 
-    data class Builder(val application: Application, val clientId: String) {
+    data class Builder(val application: Application) {
         var coroutineScope = CoroutineScope(Dispatchers.IO)
         var preferenceName = "authorizationState"
-
-        var issuer = "https://accounts.google.com"
-        var scopes: Iterable<String> = listOf("profile", "email", "openid")
         var urlAuthRedirect = "${application.packageName}:/oauth2redirect"
         var codeVerifierChallengeMethod = "S256"
         var messageDigestAlgorithm = "SHA-256"
