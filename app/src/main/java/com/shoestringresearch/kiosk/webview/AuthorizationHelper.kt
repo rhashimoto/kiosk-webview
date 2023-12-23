@@ -27,6 +27,7 @@ import net.openid.appauth.ResponseTypeValues
 import net.openid.appauth.TokenResponse
 import net.openid.appauth.browser.BrowserAllowList
 import net.openid.appauth.browser.VersionedBrowserMatcher
+import org.json.JSONObject
 import java.security.MessageDigest
 import java.security.SecureRandom
 
@@ -76,9 +77,9 @@ class AuthorizationHelper private constructor(builder: Builder) {
         }
     }
 
-    fun createAuthIntent(action: (Intent) -> Unit) {
+    fun createAuthIntent(config: JSONObject, action: (Intent) -> Unit) {
         coroutineScope.launch {
-            doAuthorizationFlow(action)
+            doAuthorizationFlow(config, action)
         }
     }
 
@@ -111,7 +112,9 @@ class AuthorizationHelper private constructor(builder: Builder) {
         return authState
     }
 
-    private suspend fun doAuthorizationFlow(launchIntent: (Intent) -> Unit) = mutex.withLock {
+    private suspend fun doAuthorizationFlow(
+        config: JSONObject,
+        launchIntent: (Intent) -> Unit) = mutex.withLock {
         try {
             // Create the PKCE verifier and challenge.
             val encoding = Base64.URL_SAFE or Base64.NO_PADDING or Base64.NO_WRAP

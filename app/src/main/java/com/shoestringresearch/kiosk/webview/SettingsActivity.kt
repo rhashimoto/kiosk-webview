@@ -1,10 +1,12 @@
 package com.shoestringresearch.kiosk.webview
 
+import android.content.Intent
 import android.os.Bundle
 import android.text.InputFilter
 import android.text.Spanned
 import android.util.Log
 import android.widget.Button
+import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.Lifecycle
@@ -14,8 +16,21 @@ import androidx.preference.EditTextPreference
 import androidx.preference.PreferenceFragmentCompat
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import org.json.JSONObject
+import java.io.BufferedReader
+import java.io.InputStream
+import java.io.InputStreamReader
+
 
 class SettingsActivity : AppCompatActivity() {
+    private val fileIntentLauncher =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            Log.v("SettingsActivity", "file result $result")
+            result.data?.let { intent ->
+                startAuthorization(intent)
+            }
+        }
+
     private val authIntentLauncher =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
             Log.v("SettingsActivity", "auth result $result")
@@ -57,9 +72,41 @@ class SettingsActivity : AppCompatActivity() {
     }
 
     private fun onAuthButtonClick() {
-        (application as Application).authorizationHelper.createAuthIntent { intent ->
-            authIntentLauncher.launch(intent)
+        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+            addCategory(Intent.CATEGORY_OPENABLE)
+            type = "application/json"
         }
+        fileIntentLauncher.launch(intent)
+    }
+
+    private fun startAuthorization(fileResultIntent: Intent) {
+        try {
+            val config = fileResultIntent.data?.let { uri ->
+                contentResolver.openInputStream(uri)?.use { inputStream ->
+                    val text = inputStreamToString(inputStream)
+                    Log.v("SettingsActivity", "${JSONObject(text)}")
+                    JSONObject(text)
+                }
+            } ?: throw Exception("Invalid auth config")
+
+            (application as Application).authorizationHelper.createAuthIntent(config) { intent ->
+                authIntentLauncher.launch(intent)
+            }
+        } catch (e: Throwable) {
+            Log.e("SettingsActivity", "Auth config file error: ${e.message}")
+            Toast.makeText(application, "${e.message}", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    private fun inputStreamToString(stream: InputStream): String {
+        val reader = BufferedReader(InputStreamReader(stream))
+        val stringBuilder = StringBuilder()
+        var line: String?
+        while (reader.readLine().also { line = it } != null) {
+            stringBuilder.append(line)
+            stringBuilder.append(System.lineSeparator())
+        }
+        return stringBuilder.toString()
     }
 
     class SettingsFragment : PreferenceFragmentCompat() {
