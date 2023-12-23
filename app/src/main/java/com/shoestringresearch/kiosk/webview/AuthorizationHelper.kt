@@ -46,7 +46,7 @@ class AuthorizationHelper private constructor(builder: Builder) {
     private val prefs: SharedPreferences
 
     private val mutex = Mutex()
-    private val resultChannel = Channel<ActivityResult>(Channel.BUFFERED)
+    private lateinit var resultChannel: Channel<ActivityResult>
 
     init {
         application = builder.application
@@ -151,6 +151,7 @@ class AuthorizationHelper private constructor(builder: Builder) {
             }.build()
 
             // Call the application callback with the intent that sends the request.
+            resultChannel = Channel(Channel.BUFFERED)
             withContext(Dispatchers.Main) {
                 Log.v("AuthorizationHelper", "providing intent")
                 launchIntent(authorizationService.getAuthorizationRequestIntent(request)!!)
