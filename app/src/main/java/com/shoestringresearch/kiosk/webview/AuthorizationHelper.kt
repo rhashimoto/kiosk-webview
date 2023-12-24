@@ -28,12 +28,11 @@ import net.openid.appauth.ResponseTypeValues
 import net.openid.appauth.TokenResponse
 import net.openid.appauth.browser.BrowserAllowList
 import net.openid.appauth.browser.VersionedBrowserMatcher
-import org.json.JSONObject
 import java.security.MessageDigest
 import java.security.SecureRandom
 
 const val DEFAULT_ISSUER = "https://accounts.google.com"
-val DEFAULT_SCOPES = listOf("profile", "email", "openid")
+val DEFAULT_SCOPES = arrayOf("profile", "email", "openid")
 
 class AuthorizationHelper private constructor(builder: Builder) {
     private val application: Application
@@ -77,7 +76,7 @@ class AuthorizationHelper private constructor(builder: Builder) {
         }
     }
 
-    fun createAuthIntent(config: JSONObject, action: (Intent) -> Unit) {
+    fun createAuthIntent(config: Config, action: (Intent) -> Unit) {
         coroutineScope.launch {
             doAuthorizationFlow(config, action)
         }
@@ -113,21 +112,13 @@ class AuthorizationHelper private constructor(builder: Builder) {
     }
 
     private suspend fun doAuthorizationFlow(
-        config: JSONObject,
+        config: Config,
         launchIntent: (Intent) -> Unit) = mutex.withLock {
         try {
             // Extract config file settings.
-            val clientId = config.getString("clientId")
-            val issuer = config.optString("issuer", DEFAULT_ISSUER)
-            val scopes = DEFAULT_SCOPES.toMutableList()
-            if (config.has("scopes")) {
-                scopes.clear()
-                val array = config.getJSONArray("scopes")
-                for (i in 0 until array.length()) {
-                    val scope = array.getString(i)
-                    scopes.add(scope)
-                }
-            }
+            val clientId = config.clientId ?: throw Exception("missing clientId")
+            val issuer = config.issuer ?: DEFAULT_ISSUER
+            val scopes = config.scopes ?: DEFAULT_SCOPES
 
             // Create the PKCE verifier and challenge.
             val encoding = Base64.URL_SAFE or Base64.NO_PADDING or Base64.NO_WRAP
@@ -163,7 +154,7 @@ class AuthorizationHelper private constructor(builder: Builder) {
                 Uri.parse(urlAuthRedirect)
             ).apply {
                 setCodeVerifier(codeVerifier, codeChallenge, codeVerifierChallengeMethod)
-                setScopes(scopes)
+                setScopes(scopes.toList())
             }.build()
 
             // Call the application callback with the intent that sends the request.
@@ -237,5 +228,33 @@ class AuthorizationHelper private constructor(builder: Builder) {
         var messageDigestAlgorithm = "SHA-256"
 
         fun build() = AuthorizationHelper(this)
+    }
+
+    // Configuration argument for createAuthIntent.
+    data class Config(
+        var clientId: String?,
+        var scopes: Array<String>?,
+        var issuer: String?) {
+
+        override fun equals(other: Any?): Boolean {
+            if (this === other) return true
+            if (javaClass != other?.javaClass) return false
+
+            other as Config
+
+            if (clientId != other.clientId) return false
+            if (scopes != null) {
+                if (other.scopes == null) return false
+                if (!scopes.contentEquals(other.scopes)) return false
+            } else if (other.scopes != null) return false
+            return issuer == other.issuer
+        }
+
+        override fun hashCode(): Int {
+            var result = clientId?.hashCode() ?: 0
+            result = 31 * result + (scopes?.contentHashCode() ?: 0)
+            result = 31 * result + (issuer?.hashCode() ?: 0)
+            return result
+        }
     }
 }

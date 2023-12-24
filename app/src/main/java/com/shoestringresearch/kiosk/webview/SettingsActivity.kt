@@ -14,9 +14,9 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.preference.EditTextPreference
 import androidx.preference.PreferenceFragmentCompat
+import com.google.gson.Gson
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import org.json.JSONObject
 import java.io.BufferedReader
 import java.io.InputStream
 import java.io.InputStreamReader
@@ -83,9 +83,11 @@ class SettingsActivity : AppCompatActivity() {
         try {
             val config = fileResultIntent.data?.let { uri ->
                 contentResolver.openInputStream(uri)?.use { inputStream ->
+                    // Parse file contents as JSON and convert to data class.
                     val text = inputStreamToString(inputStream)
-                    Log.v("SettingsActivity", "${JSONObject(text)}")
-                    JSONObject(text)
+                    Log.v("SettingsActivity", text)
+                    val gson = Gson()
+                    gson.fromJson(text, AuthorizationHelper.Config::class.java)
                 }
             } ?: throw Exception("Invalid auth config")
 
