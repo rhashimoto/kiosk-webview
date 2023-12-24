@@ -9,6 +9,7 @@ import android.widget.Toast
 import androidx.activity.result.ActivityResult
 import androidx.core.content.edit
 import androidx.preference.PreferenceManager
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
@@ -48,7 +49,7 @@ class AuthorizationHelper private constructor(builder: Builder) {
     private val prefs: SharedPreferences
 
     private val mutex = Mutex()
-    private lateinit var resultChannel: Channel<ActivityResult>
+    private lateinit var resultCompletable: CompletableDeferred<ActivityResult>
 
     init {
         application = builder.application
@@ -83,14 +84,14 @@ class AuthorizationHelper private constructor(builder: Builder) {
     }
 
     fun handleAuthResult(result: ActivityResult) {
-        resultChannel.trySend(result)
+        resultCompletable.complete(result)
     }
 
     suspend fun getAuthState(): AuthState? = mutex.withLock {
         if (authState == null) return null
 
         val lastTokenResponse = authState!!.lastTokenResponse
-        val completionChannel = Channel<Unit>(Channel.BUFFERED)
+        val completable = CompletableDeferred<Unit>()
         authState!!.performActionWithFreshTokens(authorizationService) { _, _, e ->
             try {
                 if (e != null) throw e
@@ -101,13 +102,13 @@ class AuthorizationHelper private constructor(builder: Builder) {
                 } else {
                     Log.v("AuthorizationHelper", "token refresh not needed")
                 }
-                completionChannel.trySend(Unit)
+                completable.complete(Unit)
             } catch (e: Exception) {
                 Log.e("AuthorizationHelper", "refresh failed: ${e.message}")
-                completionChannel.close(e)
+                completable.completeExceptionally(e)
             }
         }
-        completionChannel.receive()
+        completable.await()
         return authState
     }
 
@@ -166,14 +167,14 @@ class AuthorizationHelper private constructor(builder: Builder) {
             }.build()
 
             // Call the application callback with the intent that sends the request.
-            resultChannel = Channel(Channel.BUFFERED)
+            resultCompletable = CompletableDeferred()
             withContext(Dispatchers.Main) {
                 Log.v("AuthorizationHelper", "providing intent")
                 launchIntent(authorizationService.getAuthorizationRequestIntent(request)!!)
             }
 
             // Get the authorization result back from the application.
-            val result = resultChannel.receive()
+            val result = resultCompletable.await()
             val intent = requireNotNull(result.data)
             AuthorizationException.fromIntent(intent)?.let { error ->
                 throw error
@@ -185,17 +186,17 @@ class AuthorizationHelper private constructor(builder: Builder) {
 
             // Exchange the authorization code for tokens.
             val tokenRequest = response.createTokenExchangeRequest()
-            val tokenResponseChannel = Channel<TokenResponse>(Channel.BUFFERED)
+            val tokenResponseChannel = CompletableDeferred<TokenResponse>()
             authorizationService.performTokenRequest(tokenRequest) { tokenResponse, tokenError ->
                 try {
                     tokenError?.let { throw tokenError }
-                    tokenResponseChannel.trySend(tokenResponse!!)
+                    tokenResponseChannel.complete(tokenResponse!!)
                 } catch (e: Exception) {
-                    tokenResponseChannel.close(e)
+                    tokenResponseChannel.completeExceptionally(e)
                 }
             }
 
-            val tokenResponse = tokenResponseChannel.receive()
+            val tokenResponse = tokenResponseChannel.await()
             authState!!.update(tokenResponse, null)
 
             Log.v("AuthorizationHelper", "tokens received")
