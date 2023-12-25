@@ -8,20 +8,20 @@ import android.content.Context
 import android.content.pm.ActivityInfo
 import android.os.Bundle
 import android.os.Handler
-import android.os.Looper
 import android.util.Log
 import android.view.KeyEvent
-import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
-import android.webkit.WebViewClient
 import android.widget.Toast
 import androidx.core.content.edit
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.preference.PreferenceManager
+import androidx.webkit.WebResourceErrorCompat
+import androidx.webkit.WebViewAssetLoader
+import androidx.webkit.WebViewClientCompat
 
 const val RELOAD_DELAY_MILLIS = 2L * 60L * 1000L
 const val CODE_TIMEOUT = 10L * 1000L
@@ -44,14 +44,14 @@ class HomeActivity: Activity() {
         DeviceOwnerReceiver.configurePolicy(this, deviceAdmin)
 
         val webView = WebView(this)
-        webView.settings.allowContentAccess = true
         webView.settings.javaScriptEnabled = true
         webView.settings.loadsImagesAutomatically = true
-        webView.webViewClient = CustomWebViewClient(mainLooper)
+        webView.webViewClient = CustomWebViewClient(this)
         setContentView(webView)
 
         val prefs = PreferenceManager.getDefaultSharedPreferences(this)
-        webView.loadUrl(prefs.getString("url", "about:blank") ?: "")
+        webView.loadUrl(prefs.getString("url", null) ?: "about:blank")
+//        webView.loadUrl("https://appassets.androidplatform.net/assets/test.html")
 
         requestedOrientation =
             if (prefs.getString("orientation", "portrait") == "portrait") {
@@ -118,7 +118,15 @@ class HomeActivity: Activity() {
     }
 }
 
-private class CustomWebViewClient(val looper: Looper): WebViewClient() {
+private class CustomWebViewClient(val activity: Activity): WebViewClientCompat() {
+    // This configuration is supposed to happen in the DeviceAdminReceiver,
+    // but onEnabled() isn't called consistently when set-device-owner
+    // is invoked via adb.
+    val assetLoader = WebViewAssetLoader.Builder()
+        .addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(activity))
+        .addPathHandler("/res/", WebViewAssetLoader.ResourcesPathHandler(activity))
+        .build()
+
     val pending = HashSet<WebView>()
     val runnable = Runnable {
         Log.v("HomeActivity", "reloading")
@@ -131,7 +139,7 @@ private class CustomWebViewClient(val looper: Looper): WebViewClient() {
     override fun onReceivedError(
         view: WebView,
         request: WebResourceRequest,
-        error: WebResourceError
+        error: WebResourceErrorCompat
     ) {
         super.onReceivedError(view, request, error)
         Log.e("HomeActivity", "onReceivedError ${request.url} $error")
@@ -150,11 +158,18 @@ private class CustomWebViewClient(val looper: Looper): WebViewClient() {
         }
     }
 
+    override fun shouldInterceptRequest(
+        view: WebView,
+        request: WebResourceRequest
+    ): WebResourceResponse? {
+        return assetLoader.shouldInterceptRequest(request.url)
+    }
+
     private fun scheduleReload(webView: WebView) {
         Log.v("HomeActivity", "scheduleReload")
         if (!pending.contains(webView)) {
             pending.add(webView)
-            Handler(looper).postDelayed(runnable, RELOAD_DELAY_MILLIS)
+            Handler(activity.mainLooper).postDelayed(runnable, RELOAD_DELAY_MILLIS)
         }
     }
 }
