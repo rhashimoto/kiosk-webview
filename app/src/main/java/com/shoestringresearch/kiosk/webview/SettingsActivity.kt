@@ -9,14 +9,9 @@ import android.widget.Button
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.lifecycleScope
-import androidx.lifecycle.repeatOnLifecycle
 import androidx.preference.EditTextPreference
 import androidx.preference.PreferenceFragmentCompat
 import com.google.gson.Gson
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import java.io.BufferedReader
 import java.io.InputStream
 import java.io.InputStreamReader
@@ -53,22 +48,22 @@ class SettingsActivity : AppCompatActivity() {
             onAuthButtonClick()
         }
 
-        // Test token retrieval.
-        lifecycleScope.launch {
-            repeatOnLifecycle(Lifecycle.State.RESUMED) {
-                while (true) {
-                    try {
-                        Log.v("SettingsActivity", "requesting AuthState...")
-                        val authState =
-                            (application as Application).authorizationHelper.getAuthState()
-                        Log.v("SettingsActivity", "token ${authState?.accessTokenExpirationTime} ${authState?.accessToken}")
-                    } catch (e: Exception) {
-                        Log.e("SettingsActivity", "${e.message}")
-                    }
-                    delay(60_000)
-                }
-            }
-        }
+//        // Test token retrieval.
+//        lifecycleScope.launch {
+//            repeatOnLifecycle(Lifecycle.State.RESUMED) {
+//                while (true) {
+//                    try {
+//                        Log.v("SettingsActivity", "requesting AuthState...")
+//                        val authState =
+//                            (application as Application).authorizationHelper.getAuthState()
+//                        Log.v("SettingsActivity", "token ${authState?.accessTokenExpirationTime} ${authState?.accessToken}")
+//                    } catch (e: Exception) {
+//                        Log.e("SettingsActivity", "${e.message}")
+//                    }
+//                    delay(60_000)
+//                }
+//            }
+//        }
     }
 
     private fun onAuthButtonClick() {
