@@ -10,6 +10,9 @@ import android.os.Bundle
 import android.os.Handler
 import android.util.Log
 import android.view.KeyEvent
+import android.webkit.ConsoleMessage
+import android.webkit.JavascriptInterface
+import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
@@ -22,6 +25,7 @@ import androidx.preference.PreferenceManager
 import androidx.webkit.WebResourceErrorCompat
 import androidx.webkit.WebViewAssetLoader
 import androidx.webkit.WebViewClientCompat
+import kotlinx.coroutines.runBlocking
 
 const val RELOAD_DELAY_MILLIS = 2L * 60L * 1000L
 const val CODE_TIMEOUT = 10L * 1000L
@@ -47,6 +51,36 @@ class HomeActivity: Activity() {
         webView.settings.javaScriptEnabled = true
         webView.settings.loadsImagesAutomatically = true
         webView.webViewClient = CustomWebViewClient(this)
+
+        // Send JavaScript console output to logcat.
+        webView.webChromeClient = object: WebChromeClient() {
+            override fun onConsoleMessage(consoleMessage: ConsoleMessage): Boolean {
+                when (consoleMessage.messageLevel()) {
+                    ConsoleMessage.MessageLevel.DEBUG ->
+                        Log.d("HomeActivity", consoleMessage.message())
+                    ConsoleMessage.MessageLevel.LOG ->
+                        Log.i("HomeActivity", consoleMessage.message())
+                    ConsoleMessage.MessageLevel.WARNING ->
+                        Log.w("HomeActivity", consoleMessage.message())
+                    ConsoleMessage.MessageLevel.ERROR ->
+                        Log.e("HomeActivity", consoleMessage.message())
+                    else ->
+                        Log.i("HomeActivity", consoleMessage.message())
+                }
+                return true
+            }
+        }
+
+        // Expose native functions.
+        webView.addJavascriptInterface(object {
+            @JavascriptInterface
+            fun getAccessToken(): String? = runBlocking {
+                (application as Application)
+                    .authorizationHelper
+                    .getAuthState()?.accessToken
+            }
+        }, "Android")
+
         setContentView(webView)
 
         val prefs = PreferenceManager.getDefaultSharedPreferences(this)
