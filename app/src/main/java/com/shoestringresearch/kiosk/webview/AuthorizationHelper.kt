@@ -12,7 +12,6 @@ import androidx.preference.PreferenceManager
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -134,21 +133,21 @@ class AuthorizationHelper private constructor(builder: Builder) {
             }
 
             // Query the issuer (e.g. Google) for endpoint configuration.
-            val configurationChannel = Channel<AuthorizationServiceConfiguration>(Channel.BUFFERED)
+            val serviceConfigDeferred = CompletableDeferred<AuthorizationServiceConfiguration>()
             AuthorizationServiceConfiguration.fetchFromIssuer(
                 Uri.parse(issuer)) { serviceConfiguration, ex ->
                 if (ex != null) {
-                    configurationChannel.close(ex)
+                    serviceConfigDeferred.completeExceptionally(ex)
                 } else if (serviceConfiguration == null) {
-                    configurationChannel.close(Exception("missing configuration"))
+                    serviceConfigDeferred.completeExceptionally(Exception("missing configuration"))
                 } else {
-                    configurationChannel.trySend(serviceConfiguration)
+                    serviceConfigDeferred.complete(serviceConfiguration)
                 }
             }
 
             // Build the authorization code request.
             val request = AuthorizationRequest.Builder(
-                configurationChannel.receive(),
+                serviceConfigDeferred.await(),
                 clientId,
                 ResponseTypeValues.CODE,
                 Uri.parse(urlAuthRedirect)
@@ -177,18 +176,17 @@ class AuthorizationHelper private constructor(builder: Builder) {
 
             // Exchange the authorization code for tokens.
             val tokenRequest = response.createTokenExchangeRequest()
-            val tokenResponseChannel = CompletableDeferred<TokenResponse>()
+            val tokenResponseDeferred = CompletableDeferred<TokenResponse>()
             authorizationService.performTokenRequest(tokenRequest) { tokenResponse, tokenError ->
                 try {
                     tokenError?.let { throw tokenError }
-                    tokenResponseChannel.complete(tokenResponse!!)
+                    tokenResponseDeferred.complete(tokenResponse!!)
                 } catch (e: Exception) {
-                    tokenResponseChannel.completeExceptionally(e)
+                    tokenResponseDeferred.completeExceptionally(e)
                 }
             }
 
-            val tokenResponse = tokenResponseChannel.await()
-            authState!!.update(tokenResponse, null)
+            authState!!.update(tokenResponseDeferred.await(), null)
 
             Log.v("AuthorizationHelper", "tokens received")
             toast("Authorization succeeded", Toast.LENGTH_SHORT)
