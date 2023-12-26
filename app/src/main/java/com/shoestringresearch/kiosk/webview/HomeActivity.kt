@@ -153,9 +153,6 @@ class HomeActivity: Activity() {
 }
 
 private class CustomWebViewClient(val activity: Activity): WebViewClientCompat() {
-    // This configuration is supposed to happen in the DeviceAdminReceiver,
-    // but onEnabled() isn't called consistently when set-device-owner
-    // is invoked via adb.
     val assetLoader = WebViewAssetLoader.Builder()
         .addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(activity))
         .addPathHandler("/res/", WebViewAssetLoader.ResourcesPathHandler(activity))
