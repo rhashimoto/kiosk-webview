@@ -11,7 +11,6 @@ import android.os.Handler
 import android.util.Log
 import android.view.KeyEvent
 import android.webkit.ConsoleMessage
-import android.webkit.JavascriptInterface
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
@@ -26,6 +25,7 @@ import androidx.webkit.WebResourceErrorCompat
 import androidx.webkit.WebViewAssetLoader
 import androidx.webkit.WebViewClientCompat
 import kotlinx.coroutines.runBlocking
+import java.io.ByteArrayInputStream
 
 const val RELOAD_DELAY_MILLIS = 2L * 60L * 1000L
 const val CODE_TIMEOUT = 10L * 1000L
@@ -70,16 +70,6 @@ class HomeActivity: Activity() {
                 return true
             }
         }
-
-        // Expose native functions.
-        webView.addJavascriptInterface(object {
-            @JavascriptInterface
-            fun getAccessToken(): String? = runBlocking {
-                (application as Application)
-                    .authorizationHelper
-                    .getAuthState()?.accessToken
-            }
-        }, "Android")
 
         setContentView(webView)
 
@@ -193,6 +183,21 @@ private class CustomWebViewClient(val activity: Activity): WebViewClientCompat()
         view: WebView,
         request: WebResourceRequest
     ): WebResourceResponse? {
+        if (request.url.toString().startsWith("https://appassets.androidplatform.net")) {
+            if (request.url.path == "/x/token") {
+                // Return OAuth2 access token.
+                runBlocking {
+                    (activity.application as Application)
+                        .authorizationHelper
+                        .getAuthState()?.accessToken
+                }?.let { token ->
+                    return WebResourceResponse(
+                        "text/plain",
+                        "UTF-8",
+                                ByteArrayInputStream(token.toByteArray()))
+                }
+            }
+        }
         return assetLoader.shouldInterceptRequest(request.url)
     }
 

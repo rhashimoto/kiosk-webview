@@ -7,12 +7,16 @@
 <body>
 <h1>Hello, world!</h1>
 <script>
+  (async function() {
     console.log('how now brown cow');
     try {
-      console.log(Android.getAccessToken());
+      const token = await fetch('https://appassets.androidplatform.net/x/token')
+        .then(response => response.text())
+      console.log(token);
     } catch (e) {
       console.error(e.message);
     }
+  })()
 </script>
 </body>
 </html>
