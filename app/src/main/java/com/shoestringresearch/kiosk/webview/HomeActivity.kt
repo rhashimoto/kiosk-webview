@@ -54,18 +54,14 @@ class HomeActivity: Activity() {
 
         // Send JavaScript console output to logcat.
         webView.webChromeClient = object: WebChromeClient() {
-            override fun onConsoleMessage(consoleMessage: ConsoleMessage): Boolean {
-                when (consoleMessage.messageLevel()) {
-                    ConsoleMessage.MessageLevel.DEBUG ->
-                        Log.d("HomeActivity", consoleMessage.message())
-                    ConsoleMessage.MessageLevel.LOG ->
-                        Log.i("HomeActivity", consoleMessage.message())
-                    ConsoleMessage.MessageLevel.WARNING ->
-                        Log.w("HomeActivity", consoleMessage.message())
-                    ConsoleMessage.MessageLevel.ERROR ->
-                        Log.e("HomeActivity", consoleMessage.message())
-                    else ->
-                        Log.i("HomeActivity", consoleMessage.message())
+            override fun onConsoleMessage(m: ConsoleMessage): Boolean {
+                val s = "${m.sourceId()}:${m.lineNumber()} ${m.message()}"
+                when (m.messageLevel()) {
+                    ConsoleMessage.MessageLevel.DEBUG -> Log.d("WebChromeClient", s)
+                    ConsoleMessage.MessageLevel.LOG -> Log.i("WebChromeClient", s)
+                    ConsoleMessage.MessageLevel.WARNING -> Log.w("WebChromeClient", s)
+                    ConsoleMessage.MessageLevel.ERROR -> Log.e("WebChromeClient", s)
+                    else -> Log.i("WebChromeClient", s)
                 }
                 return true
             }
