@@ -6,6 +6,7 @@ import android.app.admin.DevicePolicyManager
 import android.content.ComponentName
 import android.content.Context
 import android.content.pm.ActivityInfo
+import android.content.pm.PackageManager
 import android.os.Bundle
 import android.os.Handler
 import android.util.Log
@@ -24,11 +25,14 @@ import androidx.preference.PreferenceManager
 import androidx.webkit.WebResourceErrorCompat
 import androidx.webkit.WebViewAssetLoader
 import androidx.webkit.WebViewClientCompat
+import androidx.webkit.WebViewFeature
 import kotlinx.coroutines.runBlocking
 import java.io.ByteArrayInputStream
 
 const val RELOAD_DELAY_MILLIS = 2L * 60L * 1000L
 const val CODE_TIMEOUT = 10L * 1000L
+
+const val CLIENT_ID_RESOURCE = "com.shoestringresearch.kiosk.webview.clientId"
 
 class HomeActivity: Activity() {
     private lateinit var devicePolicyManager: DevicePolicyManager
@@ -159,8 +163,15 @@ private class CustomWebViewClient(val activity: Activity): WebViewClientCompat()
         error: WebResourceErrorCompat
     ) {
         super.onReceivedError(view, request, error)
-        Log.e("HomeActivity", "onReceivedError ${request.url} $error")
-        scheduleReload(view)
+        val description = if (WebViewFeature.isFeatureSupported(WebViewFeature.WEB_RESOURCE_ERROR_GET_DESCRIPTION)) {
+            error.description
+        } else {
+            ""
+        }
+        Log.e("CustomWebViewClient", "onReceivedError ${request.url} $description")
+        if (!request.url.toString().endsWith("favicon.ico")) {
+            scheduleReload(view)
+        }
     }
 
     override fun onReceivedHttpError(
@@ -169,7 +180,7 @@ private class CustomWebViewClient(val activity: Activity): WebViewClientCompat()
         errorResponse: WebResourceResponse
     ) {
         super.onReceivedHttpError(view, request, errorResponse)
-        Log.e("HomeActivity", "onReceivedHttpError ${request.url}")
+        Log.e("CustomWebViewClient", "onReceivedHttpError ${request.url}")
         if (!request.url.toString().endsWith("favicon.ico")) {
             scheduleReload(view)
         }
@@ -179,10 +190,10 @@ private class CustomWebViewClient(val activity: Activity): WebViewClientCompat()
         view: WebView,
         request: WebResourceRequest
     ): WebResourceResponse? {
+        Log.v("CustomWebViewClient", "webview ${request.url}")
         if (request.url.toString().startsWith("https://appassets.androidplatform.net")) {
-            if (request.url.path == "/x/token") {
-                // Return OAuth2 access token.
-                runBlocking {
+            when (request.url.path) {
+                "/x/accessToken" -> runBlocking {
                     (activity.application as Application)
                         .authorizationHelper
                         .getAuthState()?.accessToken
@@ -190,7 +201,19 @@ private class CustomWebViewClient(val activity: Activity): WebViewClientCompat()
                     return WebResourceResponse(
                         "text/plain",
                         "UTF-8",
-                                ByteArrayInputStream(token.toByteArray()))
+                        ByteArrayInputStream(token.toByteArray()))
+                }
+
+                "/x/clientId" -> {
+                    val activityInfo = activity.packageManager.getActivityInfo(
+                        activity.componentName,
+                        PackageManager.GET_META_DATA)
+                    activityInfo.metaData.getString(CLIENT_ID_RESOURCE)?.let { clientId ->
+                        return WebResourceResponse(
+                            "text/plain",
+                            "UTF-8",
+                            ByteArrayInputStream(clientId.toByteArray()))
+                    }
                 }
             }
         }
@@ -198,7 +221,7 @@ private class CustomWebViewClient(val activity: Activity): WebViewClientCompat()
     }
 
     private fun scheduleReload(webView: WebView) {
-        Log.v("HomeActivity", "scheduleReload")
+        Log.v("CustomWebViewClient", "scheduleReload")
         if (!pending.contains(webView)) {
             pending.add(webView)
             Handler(activity.mainLooper).postDelayed(runnable, RELOAD_DELAY_MILLIS)

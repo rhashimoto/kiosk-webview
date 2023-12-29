@@ -27,6 +27,8 @@
    * SPDX-License-Identifier: BSD-3-Clause
    */class s extends b{constructor(){super(...arguments),this.renderOptions={host:this},this._$Do=void 0;}createRenderRoot(){const t=super.createRenderRoot();return this.renderOptions.renderBefore??=t.firstChild,t}update(t){const i=this.render();this.hasUpdated||(this.renderOptions.isConnected=this.isConnected),super.update(t),this._$Do=j(i,this.renderRoot,this.renderOptions);}connectedCallback(){super.connectedCallback(),this._$Do?.setConnected(!0);}disconnectedCallback(){super.disconnectedCallback(),this._$Do?.setConnected(!1);}render(){return w}}s._$litElement$=!0,s[("finalized")]=!0,globalThis.litElementHydrateSupport?.({LitElement:s});const r=globalThis.litElementPolyfillSupport;r?.({LitElement:s});(globalThis.litElementVersions??=[]).push("4.0.2");
 
+  const ANDROID_WEBVIEW = 'https://appassets.androidplatform.net';
+
   class AppMain extends s {
     static get properties() {
       return {
@@ -36,6 +38,16 @@
 
     constructor() {
       super();
+      if (window.location.href.startsWith(ANDROID_WEBVIEW)) {
+        fetch(`${ANDROID_WEBVIEW}/x/clientId`).then(async response => {
+          const clientId = await response.text();
+          console.log(clientId);
+        });
+        fetch(`${ANDROID_WEBVIEW}/x/accessToken`).then(async response => {
+          const accessToken = await response.text();
+          console.log(accessToken);
+        });
+      }
     }
 
     firstUpdated() {
@@ -43,10 +55,13 @@
         this.shadowRoot.querySelectorAll('.container'),
         container => container.id);
       setInterval(() => {
-        const name = names[Math.floor(Math.random() * names.length)];
+        const name = names.shift();
+        names.push(name);
         console.log(name);
         this.#show(name);
-      }, 2000);
+      }, 20_000);
+
+      this.#show(names[0]);
     }
 
     #show(id) {
@@ -80,11 +95,12 @@
         width: 100%;
         height: 100%;
         overflow: hidden;
+
         z-index: 0;
+        opacity: 0;
       }
 
       .retiring {
-        z-index: 1;
         opacity: 1;
       }
 
@@ -94,7 +110,8 @@
       }
 
       .foreground {
-        z-index: 2;
+        z-index: 1;
+        opacity: 1;
         animation: fade-in 1s;
       }
 

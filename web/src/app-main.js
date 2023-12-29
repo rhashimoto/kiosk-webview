@@ -1,6 +1,8 @@
 import { LitElement, css, html } from 'lit';
 import { ref, createRef } from 'lit/directives/ref.js';
 
+const ANDROID_WEBVIEW = 'https://appassets.androidplatform.net';
+
 class AppMain extends LitElement {
   static get properties() {
     return {
@@ -10,6 +12,16 @@ class AppMain extends LitElement {
 
   constructor() {
     super();
+    if (window.location.href.startsWith(ANDROID_WEBVIEW)) {
+      fetch(`${ANDROID_WEBVIEW}/x/clientId`).then(async response => {
+        const clientId = await response.text();
+        console.log(clientId);
+      });
+      fetch(`${ANDROID_WEBVIEW}/x/accessToken`).then(async response => {
+        const accessToken = await response.text();
+        console.log(accessToken);
+      });
+    }
   }
 
   firstUpdated() {
@@ -17,10 +29,13 @@ class AppMain extends LitElement {
       this.shadowRoot.querySelectorAll('.container'),
       container => container.id);
     setInterval(() => {
-      const name = names[Math.floor(Math.random() * names.length)];
+      const name = names.shift();
+      names.push(name);
       console.log(name);
       this.#show(name);
-    }, 2000);
+    }, 20_000);
+
+    this.#show(names[0]);
   }
 
   #show(id) {
@@ -55,11 +70,12 @@ class AppMain extends LitElement {
         width: 100%;
         height: 100%;
         overflow: hidden;
+
         z-index: 0;
+        opacity: 0;
       }
 
       .retiring {
-        z-index: 1;
         opacity: 1;
       }
 
@@ -69,7 +85,8 @@ class AppMain extends LitElement {
       }
 
       .foreground {
-        z-index: 2;
+        z-index: 1;
+        opacity: 1;
         animation: fade-in 1s;
       }
 

@@ -19,6 +19,13 @@
             android:exported="true"
             android:launchMode="singleInstance"
             android:theme="@style/Theme.AppCompat.Light.NoActionBar.FullScreen">
+
+            <!-- Defined in local.properties and written to resource in app build.gradle -->
+            <meta-data
+                android:name="com.shoestringresearch.kiosk.webview.clientId"
+                android:value="@string/clientId">
+            </meta-data>
+
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
