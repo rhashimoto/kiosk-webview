@@ -1,10 +1,16 @@
 {
-  "name": "twa-iframe",
+  "name": "kiosk-webview",
+  "type": "module",
   "packageManager": "yarn@4.0.2",
   "scripts": {
     "start": "yarn web-dev-server --node-resolve"
   },
   "devDependencies": {
-    "@web/dev-server": "^0.4.1"
+    "@rollup/plugin-node-resolve": "^15.2.3",
+    "@web/dev-server": "^0.4.1",
+    "rollup": "^4.9.1"
+  },
+  "dependencies": {
+    "lit": "^3.1.0"
   }
 }
