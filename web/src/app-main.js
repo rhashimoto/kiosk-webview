@@ -1,7 +1,11 @@
 import { LitElement, css, html } from 'lit';
 
-import { withGAPI } from './gapi.js';
 import './app-calendar.js';
+
+const UPDATE_INTERVAL = 60_000;
+const DAYLIGHT_RANGES = [
+  [[7, 0, 0, 0],[19, 0, 0, 0]],
+];
 
 class AppMain extends LitElement {
   static get properties() {
@@ -12,34 +16,43 @@ class AppMain extends LitElement {
 
   constructor() {
     super();
-    // withGAPI(async gapi => {
-    //   return gapi.client.calendar.events.list({
-    //     calendarId: 'primary',
-    //     maxResults: 1,
-    //     orderBy: 'startTime',
-    //     singleEvents: true
-    //   });
-    // }).then(response => console.log(JSON.stringify(response.result, null, 2)));
   }
 
   firstUpdated() {
-    this.#show('calendar');
-
-    // const names = Array.from(
-    //   this.shadowRoot.querySelectorAll('.container'),
-    //   container => container.id);
-    // setInterval(() => {
-    //   const name = names.shift();
-    //   names.push(name);
-    //   console.log(name);
-    //   this.#show(name);
-    // }, 20_000);
-
-    // this.#show(names[0]);
+    this.#updateApp();
   }
 
+  #updateApp() {
+    if (this.#isDaylight(new Date())) {
+      this.#show('calendar');
+    } else {
+      this.#show('blackout');
+    }
+
+    setTimeout(() => this.#updateApp(), UPDATE_INTERVAL);
+  }
+
+  #isDaylight(date) {
+    for (const [startTime, endTime] of DAYLIGHT_RANGES) {
+      const startDate = new Date(date);
+      // @ts-ignore
+      startDate.setHours(...startTime);
+      
+      const endDate = new Date(date);
+      // @ts-ignore
+      endDate.setHours(...endTime);
+  
+  
+      if (date >= startDate && date < endDate) {
+        return true;
+      }
+    }
+    return false;
+  }
+  
   #show(id) {
     const containers = this.shadowRoot.querySelectorAll('.container');
+    // @ts-ignore
     for (const container of containers) {
       if (container.classList.contains('retiring')) {
         container.classList.remove('retiring');
