@@ -6,7 +6,6 @@ import android.app.admin.DevicePolicyManager
 import android.content.ComponentName
 import android.content.Context
 import android.content.pm.ActivityInfo
-import android.content.pm.PackageManager
 import android.os.Bundle
 import android.os.Handler
 import android.util.Log
@@ -31,8 +30,6 @@ import java.io.ByteArrayInputStream
 
 const val RELOAD_DELAY_MILLIS = 2L * 60L * 1000L
 const val CODE_TIMEOUT = 10L * 1000L
-
-const val CLIENT_ID_RESOURCE = "com.shoestringresearch.kiosk.webview.clientId"
 
 class HomeActivity: Activity() {
     private lateinit var devicePolicyManager: DevicePolicyManager
@@ -180,7 +177,7 @@ private class CustomWebViewClient(val activity: Activity): WebViewClientCompat()
         errorResponse: WebResourceResponse
     ) {
         super.onReceivedHttpError(view, request, errorResponse)
-        Log.e("CustomWebViewClient", "onReceivedHttpError ${request.url}")
+        Log.e("CustomWebViewClient", "onReceivedHttpError ${request.url} ${errorResponse.statusCode}")
 //        if (!request.url.toString().endsWith("favicon.ico")) {
 //            scheduleReload(view)
 //        }
@@ -202,18 +199,6 @@ private class CustomWebViewClient(val activity: Activity): WebViewClientCompat()
                         "text/plain",
                         "UTF-8",
                         ByteArrayInputStream(token.toByteArray()))
-                }
-
-                "/x/clientId" -> {
-                    val activityInfo = activity.packageManager.getActivityInfo(
-                        activity.componentName,
-                        PackageManager.GET_META_DATA)
-                    activityInfo.metaData.getString(CLIENT_ID_RESOURCE)?.let { clientId ->
-                        return WebResourceResponse(
-                            "text/plain",
-                            "UTF-8",
-                            ByteArrayInputStream(clientId.toByteArray()))
-                    }
                 }
             }
         }

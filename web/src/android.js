@@ -11,10 +11,6 @@ export async function getAndroidResource(name) {
   return response.text();
 }
 
-export function getClientId() {
-  return getAndroidResource('clientId');
-}
-
 export async function getAccessToken() {
   return getAndroidResource('accessToken');
 }

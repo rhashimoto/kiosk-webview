@@ -41,7 +41,6 @@ android {
         // The name for the application
         resValue "string", "appName", "WebView Kiosk"
 
-        resValue "string", "clientId", properties.getProperty("default.clientId", "")
         resValue "string", "default_unlock_code", properties.getProperty("default.unlockCode", "")
     }
     buildTypes {
