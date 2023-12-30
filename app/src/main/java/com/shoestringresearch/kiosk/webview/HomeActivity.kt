@@ -28,8 +28,10 @@ import androidx.webkit.WebViewFeature
 import kotlinx.coroutines.runBlocking
 import java.io.ByteArrayInputStream
 
-const val RELOAD_DELAY_MILLIS = 2L * 60L * 1000L
 const val CODE_TIMEOUT = 10L * 1000L
+
+const val RELOAD_ERROR_COUNT = 5L
+const val RELOAD_ERROR_MILLIS = 5L * 60L * 1000L
 
 class HomeActivity: Activity() {
     private lateinit var devicePolicyManager: DevicePolicyManager
@@ -145,14 +147,7 @@ private class CustomWebViewClient(val activity: Activity): WebViewClientCompat()
         .addPathHandler("/res/", WebViewAssetLoader.ResourcesPathHandler(activity))
         .build()
 
-    val pending = HashSet<WebView>()
-    val runnable = Runnable {
-        Log.v("HomeActivity", "reloading")
-        pending.forEach {
-            it.reload()
-        }
-        pending.clear()
-    }
+    val errorTimestamps = ArrayDeque<Long>()
 
     override fun onReceivedError(
         view: WebView,
@@ -166,9 +161,10 @@ private class CustomWebViewClient(val activity: Activity): WebViewClientCompat()
             ""
         }
         Log.e("CustomWebViewClient", "onReceivedError ${request.url} $description")
-        if (!request.url.toString().endsWith("favicon.ico")) {
-            scheduleReload(view)
-        }
+//        if (!request.url.toString().endsWith("favicon.ico")) {
+//            countErrors(view)
+//        }
+        countErrors(view)
     }
 
     override fun onReceivedHttpError(
@@ -178,9 +174,7 @@ private class CustomWebViewClient(val activity: Activity): WebViewClientCompat()
     ) {
         super.onReceivedHttpError(view, request, errorResponse)
         Log.e("CustomWebViewClient", "onReceivedHttpError ${request.url} ${errorResponse.statusCode}")
-//        if (!request.url.toString().endsWith("favicon.ico")) {
-//            scheduleReload(view)
-//        }
+        countErrors(view)
     }
 
     override fun shouldInterceptRequest(
@@ -205,11 +199,16 @@ private class CustomWebViewClient(val activity: Activity): WebViewClientCompat()
         return assetLoader.shouldInterceptRequest(request.url)
     }
 
-    private fun scheduleReload(webView: WebView) {
-        Log.v("CustomWebViewClient", "scheduleReload")
-        if (!pending.contains(webView)) {
-            pending.add(webView)
-            Handler(activity.mainLooper).postDelayed(runnable, RELOAD_DELAY_MILLIS)
+    private fun countErrors(webView: WebView) {
+        val t = System.currentTimeMillis()
+        errorTimestamps.addLast(t)
+        while (t - errorTimestamps.first() > RELOAD_ERROR_MILLIS) {
+            errorTimestamps.removeFirst()
+        }
+
+        Log.w("CustomWebViewClient", "error count ${errorTimestamps.size}")
+        if (errorTimestamps.size >= RELOAD_ERROR_COUNT) {
+            webView.reload()
         }
     }
 }

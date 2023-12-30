@@ -19,10 +19,12 @@ export const withGAPI = (function() {
       return gapi.client.load(discoveryDoc);
     }));
 
-    // In the Android app, the app provides authorization.
+    // In the Android app, access tokens are provided by the app
+    // asset loader.
     if (isAndroidApp()) return getAccessToken;
 
-    // Outside the app, use Google Identity Services.
+    // Outside the app, use Google Identity Services implicit flow.
+    // https://developers.google.com/identity/oauth2/web/guides/migration-to-gis#implicit_flow_examples
     const [ config ] = await Promise.all([
       fetch('/test.json').then(response => response.json()),
       loadScript(GIS_URL)
@@ -79,7 +81,6 @@ async function loadScript(url) {
   await new Promise(resolve => {
     script.addEventListener('load', resolve);
   });
-  console.log('loaded', url);
 }
 
 function needsAuthorization(e) {
