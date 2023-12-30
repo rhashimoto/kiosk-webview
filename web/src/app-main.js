@@ -1,6 +1,7 @@
 import { LitElement, css, html } from 'lit';
 
 import { withGAPI } from './gapi.js';
+import './app-calendar.js';
 
 class AppMain extends LitElement {
   static get properties() {
@@ -11,28 +12,30 @@ class AppMain extends LitElement {
 
   constructor() {
     super();
-    withGAPI(async gapi => {
-      return gapi.client.calendar.events.list({
-        calendarId: 'primary',
-        maxResults: 1,
-        orderBy: 'startTime',
-        singleEvents: true
-      });
-    }).then(response => console.log(JSON.stringify(response.result, null, 2)));
+    // withGAPI(async gapi => {
+    //   return gapi.client.calendar.events.list({
+    //     calendarId: 'primary',
+    //     maxResults: 1,
+    //     orderBy: 'startTime',
+    //     singleEvents: true
+    //   });
+    // }).then(response => console.log(JSON.stringify(response.result, null, 2)));
   }
 
   firstUpdated() {
-    const names = Array.from(
-      this.shadowRoot.querySelectorAll('.container'),
-      container => container.id);
-    setInterval(() => {
-      const name = names.shift();
-      names.push(name);
-      console.log(name);
-      this.#show(name);
-    }, 20_000);
+    this.#show('calendar');
 
-    this.#show(names[0]);
+    // const names = Array.from(
+    //   this.shadowRoot.querySelectorAll('.container'),
+    //   container => container.id);
+    // setInterval(() => {
+    //   const name = names.shift();
+    //   names.push(name);
+    //   console.log(name);
+    //   this.#show(name);
+    // }, 20_000);
+
+    // this.#show(names[0]);
   }
 
   #show(id) {
@@ -96,9 +99,7 @@ class AppMain extends LitElement {
   render() {
     return html`
       <div id="blackout" class="container"></div>
-      <div id="red" class="container" style="background-color: red;"></div>
-      <div id="green" class="container" style="background-color: green;"></div>
-      <div id="blue" class="container" style="background-color: blue;"></div>
+      <app-calendar id="calendar" class="container"></app-calendar>
     `;
   }
 }

@@ -43,7 +43,7 @@ export const withGAPI = (function() {
             reject(response.error);
           } else {
             resolve(response.access_token);
-            console.log(JSON.stringify(response, null, 2));
+            console.log('access token received');
           }
         };
         tokenClient.requestAccessToken();
