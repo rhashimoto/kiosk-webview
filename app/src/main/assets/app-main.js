@@ -27,7 +27,108 @@
    * SPDX-License-Identifier: BSD-3-Clause
    */class s extends b{constructor(){super(...arguments),this.renderOptions={host:this},this._$Do=void 0;}createRenderRoot(){const t=super.createRenderRoot();return this.renderOptions.renderBefore??=t.firstChild,t}update(t){const i=this.render();this.hasUpdated||(this.renderOptions.isConnected=this.isConnected),super.update(t),this._$Do=j(i,this.renderRoot,this.renderOptions);}connectedCallback(){super.connectedCallback(),this._$Do?.setConnected(!0);}disconnectedCallback(){super.disconnectedCallback(),this._$Do?.setConnected(!1);}render(){return w}}s._$litElement$=!0,s[("finalized")]=!0,globalThis.litElementHydrateSupport?.({LitElement:s});const r=globalThis.litElementPolyfillSupport;r?.({LitElement:s});(globalThis.litElementVersions??=[]).push("4.0.2");
 
-  const ANDROID_WEBVIEW = 'https://appassets.androidplatform.net';
+  // https://developer.android.com/develop/ui/views/layout/webapps/load-local-content#assetloader
+  const ANDROID_APP = 'https://appassets.androidplatform.net';
+
+  const isAndroidApp = (function() {
+    const hasAssetLoaderLocation = window.location.href.startsWith(ANDROID_APP);
+    return () => hasAssetLoaderLocation;
+  })();
+
+  async function getAndroidResource(name) {
+    const response = await fetch(`${ANDROID_APP}/x/${name}`);
+    return response.text();
+  }
+
+  async function getAccessToken() {
+    return getAndroidResource('accessToken');
+  }
+
+  const {
+    GOOGLE_DISCOVERY_DOCS,
+    GOOGLE_GAPI_LIBRARIES
+  } = JSON.parse(document.getElementById('google-config').textContent);
+
+  const GAPI_URL = 'https://apis.google.com/js/api.js';
+  const GIS_URL = 'https://accounts.google.com/gsi/client';
+
+  const withGAPI = (function() {
+    const ready = loadScript(GAPI_URL).then(async () => {
+      // Initialize GAPI client.
+      await new Promise((callback, onerror) => {
+        gapi.load(GOOGLE_GAPI_LIBRARIES, { callback, onerror });
+      });
+      await gapi.client.init({});
+      await Promise.all(GOOGLE_DISCOVERY_DOCS.map(discoveryDoc => {
+        return gapi.client.load(discoveryDoc);
+      }));
+
+      // In the Android app, the app provides authorization.
+      if (isAndroidApp()) return getAccessToken;
+
+      // Outside the app, use Google Identity Services.
+      const [ config ] = await Promise.all([
+        fetch('/test.json').then(response => response.json()),
+        loadScript(GIS_URL)
+      ]);
+      const tokenClient = google.accounts.oauth2.initTokenClient({
+        client_id: config.webClientId,
+        scope: config.scopes.join(' '),
+        prompt: '',
+        callback: ''
+      });
+
+      return () => new Promise((resolve, reject) => {
+        try {
+          tokenClient.callback = response => {
+            if (response.error) {
+              reject(response.error);
+            } else {
+              resolve(response.access_token);
+              console.log(JSON.stringify(response, null, 2));
+            }
+          };
+          tokenClient.requestAccessToken();
+        } catch (e) {
+          // Handle errors that are not authorization errors.
+          reject(e);
+        }
+      });
+    });
+
+    return async function withGAPI(f) {
+      const getToken = await ready;
+      for (let i = 0; i < 2; ++i) {
+        try {
+          return await f(gapi);
+        } catch (e) {
+          // If the first try fails with an authorization error, get a
+          // new token and try again.
+          if (!i && needsAuthorization(e)) {
+            const token = await getToken();
+            gapi.auth.setToken({ access_token: token });
+            continue;
+          }
+          throw e;
+        }
+      }
+    }
+  })();
+
+  async function loadScript(url) {
+    const script = document.createElement('script');
+    script.src = url;
+    document.head.appendChild(script);
+
+    await new Promise(resolve => {
+      script.addEventListener('load', resolve);
+    });
+    console.log('loaded', url);
+  }
+
+  function needsAuthorization(e) {
+    return [401, 403].includes(e.result?.error?.code);
+  }
 
   class AppMain extends s {
     static get properties() {
@@ -38,16 +139,14 @@
 
     constructor() {
       super();
-      if (window.location.href.startsWith(ANDROID_WEBVIEW)) {
-        fetch(`${ANDROID_WEBVIEW}/x/clientId`).then(async response => {
-          const clientId = await response.text();
-          console.log(clientId);
+      withGAPI(async gapi => {
+        return gapi.client.calendar.events.list({
+          calendarId: 'primary',
+          maxResults: 1,
+          orderBy: 'startTime',
+          singleEvents: true
         });
-        fetch(`${ANDROID_WEBVIEW}/x/accessToken`).then(async response => {
-          const accessToken = await response.text();
-          console.log(accessToken);
-        });
-      }
+      }).then(response => console.log(JSON.stringify(response.result, null, 2)));
     }
 
     firstUpdated() {

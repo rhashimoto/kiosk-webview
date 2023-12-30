@@ -1,7 +1,6 @@
 import { LitElement, css, html } from 'lit';
-import { ref, createRef } from 'lit/directives/ref.js';
 
-const ANDROID_WEBVIEW = 'https://appassets.androidplatform.net';
+import { withGAPI } from './gapi.js';
 
 class AppMain extends LitElement {
   static get properties() {
@@ -12,16 +11,14 @@ class AppMain extends LitElement {
 
   constructor() {
     super();
-    if (window.location.href.startsWith(ANDROID_WEBVIEW)) {
-      fetch(`${ANDROID_WEBVIEW}/x/clientId`).then(async response => {
-        const clientId = await response.text();
-        console.log(clientId);
+    withGAPI(async gapi => {
+      return gapi.client.calendar.events.list({
+        calendarId: 'primary',
+        maxResults: 1,
+        orderBy: 'startTime',
+        singleEvents: true
       });
-      fetch(`${ANDROID_WEBVIEW}/x/accessToken`).then(async response => {
-        const accessToken = await response.text();
-        console.log(accessToken);
-      });
-    }
+    }).then(response => console.log(JSON.stringify(response.result, null, 2)));
   }
 
   firstUpdated() {

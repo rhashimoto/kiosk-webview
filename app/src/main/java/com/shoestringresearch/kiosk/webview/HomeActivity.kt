@@ -181,9 +181,9 @@ private class CustomWebViewClient(val activity: Activity): WebViewClientCompat()
     ) {
         super.onReceivedHttpError(view, request, errorResponse)
         Log.e("CustomWebViewClient", "onReceivedHttpError ${request.url}")
-        if (!request.url.toString().endsWith("favicon.ico")) {
-            scheduleReload(view)
-        }
+//        if (!request.url.toString().endsWith("favicon.ico")) {
+//            scheduleReload(view)
+//        }
     }
 
     override fun shouldInterceptRequest(

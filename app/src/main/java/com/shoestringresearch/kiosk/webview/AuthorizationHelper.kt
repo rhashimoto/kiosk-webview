@@ -234,6 +234,8 @@ class AuthorizationHelper private constructor(builder: Builder) {
         var scopes: Array<String>?,
         var issuer: String?) {
 
+        @Suppress("unused") var webClientId: String? = null
+
         override fun equals(other: Any?): Boolean {
             if (this === other) return true
             if (javaClass != other?.javaClass) return false
