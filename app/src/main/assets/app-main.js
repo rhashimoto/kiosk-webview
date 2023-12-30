@@ -240,7 +240,7 @@
       .summary {
         font-weight: bold;
         font-size: 2.5vw;
-        padding-bottom: 0.5em;
+        padding-bottom: 0.1em;
       }
 
       .description {
