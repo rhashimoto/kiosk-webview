@@ -172,6 +172,30 @@
       this.event = {};
     }
 
+    firstUpdated() {
+      this.#adjustSummaryFontSize();
+    }
+
+    #adjustSummaryFontSize() {
+      const summary = this.shadowRoot.querySelector('.summary');
+      if (summary.scrollWidth / summary.clientWidth > 1.25) {
+        // Squeezing onto one line will be too small. Reduce the
+        // font size and allow wrapping.
+        const fontSize = parseFloat(getComputedStyle(summary).fontSize);
+        // @ts-ignore
+        summary.style.fontSize = (fontSize * 0.8) + 'px';
+        // @ts-ignore
+        summary.style.whiteSpace = 'normal';
+      } else {
+        // Scale the font size down until the line fits.
+        while (summary.scrollWidth / summary.clientWidth > 1) {
+          const fontSize = parseFloat(getComputedStyle(summary).fontSize);
+          // @ts-ignore
+          summary.style.fontSize = (fontSize * 0.99) + 'px';
+        }
+        }
+    }
+
     #getDescription() {
       const description = ((description) => {
         if (description.startsWith('<html-blob>')) {
@@ -241,6 +265,7 @@
         font-weight: bold;
         font-size: 2.5vw;
         padding-bottom: 0.1em;
+        white-space: nowrap;
       }
 
       .description {
@@ -377,6 +402,11 @@
         grid-auto-rows: 0;
         grid-auto-flow: column;
         gap: 0.5rem;
+      }
+
+      .content > * {
+        min-width: 0;
+        min-height: 0;
       }
     `;
     }

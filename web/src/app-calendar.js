@@ -114,6 +114,11 @@ class AppCalendar extends LitElement {
         grid-auto-flow: column;
         gap: 0.5rem;
       }
+
+      .content > * {
+        min-width: 0;
+        min-height: 0;
+      }
     `;
   }
 
