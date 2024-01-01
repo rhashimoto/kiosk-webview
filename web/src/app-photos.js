@@ -136,7 +136,7 @@ class AppPhotos extends LitElement {
         CACHE_BATCH_SIZE);
       if (photos.length < CACHE_BATCH_SIZE) {
         const morePhotos = await index.getAll(
-          IDBKeyRange.bound('', shuffleKey, false, true),
+          IDBKeyRange.bound(Number.NEGATIVE_INFINITY, shuffleKey, false, true),
           CACHE_BATCH_SIZE - photos.length);
         photos.push(...morePhotos);
       }

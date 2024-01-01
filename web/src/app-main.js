@@ -104,13 +104,14 @@ class AppMain extends LitElement {
 
       @keyframes fade-in {
         from { opacity: 0; }
+        20% { opacity: 0; }
         to { opacity: 1; }
       }
 
       .foreground {
         z-index: 1;
         opacity: 1;
-        animation: fade-in 1s;
+        animation: fade-in 2s;
       }
 
       #blackout {
