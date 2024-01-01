@@ -52,6 +52,7 @@ class HomeActivity: Activity() {
         DeviceOwnerReceiver.configurePolicy(this, deviceAdmin)
 
         val webView = WebView(this)
+        webView.settings.domStorageEnabled = true
         webView.settings.javaScriptEnabled = true
         webView.settings.loadsImagesAutomatically = true
         webView.webViewClient = CustomWebViewClient(this)
@@ -213,7 +214,7 @@ private class CustomWebViewClient(val activity: Activity): WebViewClientCompat()
 
         Log.w("CustomWebViewClient", "error count ${errorTimestamps.size}")
         if (errorTimestamps.size >= RELOAD_ERROR_COUNT) {
-            webView.reload()
+//            webView.reload()
         }
     }
 }

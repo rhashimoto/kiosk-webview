@@ -52,6 +52,7 @@ export default [{
   plugins: [
     copyFilesPlugin([
       './web/src/index.html',
+      './web/src/sw.js'
     ]),
     nodeResolve()
   ]

@@ -1,21 +1,26 @@
 import { LitElement, css, html } from 'lit';
 
 import './app-calendar.js';
+import './app-photos.js';
 
-const UPDATE_INTERVAL = 60_000;
-const DAYLIGHT_RANGES = [
+const VIEWING_RANGES = [
   [[7, 0, 0, 0],[19, 0, 0, 0]],
 ];
+
+navigator.serviceWorker.register('./sw.js')
 
 class AppMain extends LitElement {
   static get properties() {
     return {
-      example: { attribute: null }
+      interval: { type: Number }
     }
   }
 
+  #intervalCounter = 0;
+
   constructor() {
     super();
+    this.interval = 15_000;
   }
 
   firstUpdated() {
@@ -23,17 +28,23 @@ class AppMain extends LitElement {
   }
 
   #updateApp() {
-    if (this.#isDaylight(new Date())) {
-      this.#show('calendar');
+    const now = Date.now();
+    if (this.#isViewingTime(now)) {
+      if (this.#intervalCounter++ % 2) {
+        this.shadowRoot.getElementById('photos').dispatchEvent(new CustomEvent('show-photo'));
+        this.#show('photos');
+      } else {
+        this.#show('calendar');
+      }
     } else {
       this.#show('blackout');
     }
 
-    setTimeout(() => this.#updateApp(), UPDATE_INTERVAL);
+    setTimeout(() => this.#updateApp(), this.interval);
   }
 
-  #isDaylight(date) {
-    for (const [startTime, endTime] of DAYLIGHT_RANGES) {
+  #isViewingTime(date) {
+    for (const [startTime, endTime] of VIEWING_RANGES) {
       const startDate = new Date(date);
       // @ts-ignore
       startDate.setHours(...startTime);
@@ -41,8 +52,7 @@ class AppMain extends LitElement {
       const endDate = new Date(date);
       // @ts-ignore
       endDate.setHours(...endTime);
-  
-  
+    
       if (date >= startDate && date < endDate) {
         return true;
       }
@@ -112,6 +122,7 @@ class AppMain extends LitElement {
   render() {
     return html`
       <div id="blackout" class="container"></div>
+      <app-photos id="photos" class="container"></app-photos>
       <app-calendar id="calendar" class="container"></app-calendar>
     `;
   }

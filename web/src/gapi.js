@@ -11,6 +11,7 @@ const GIS_URL = 'https://accounts.google.com/gsi/client';
 export const withGAPI = (function() {
   const ready = loadScript(GAPI_URL).then(async () => {
     // Initialize GAPI client.
+    const gapi = globalThis.gapi;
     await new Promise((callback, onerror) => {
       gapi.load(GOOGLE_GAPI_LIBRARIES, { callback, onerror });
     });
@@ -29,6 +30,7 @@ export const withGAPI = (function() {
       fetch('/test.json').then(response => response.json()),
       loadScript(GIS_URL)
     ]);
+    const google = globalThis.google;
     const tokenClient = google.accounts.oauth2.initTokenClient({
       client_id: config.webClientId,
       scope: config.scopes.join(' '),
@@ -54,8 +56,10 @@ export const withGAPI = (function() {
     });
   });
 
-  return async function withGAPI(f) {
+  let pendingToken = null;
+  return async function(f) {
     const getToken = await ready;
+    const gapi = globalThis.gapi;
     for (let i = 0; i < 2; ++i) {
       try {
         return await f(gapi);
@@ -63,14 +67,18 @@ export const withGAPI = (function() {
         // If the first try fails with an authorization error, get a
         // new token and try again.
         if (!i && needsAuthorization(e)) {
-          const token = await getToken();
+          // Allow only one token request at a time.
+          const token = pendingToken ?
+            await pendingToken :
+            await (pendingToken = getToken());
           gapi.auth.setToken({ access_token: token });
+          pendingToken = null;
           continue;
         }
         throw e;
       }
     }
-  }
+  };
 })();
 
 async function loadScript(url) {

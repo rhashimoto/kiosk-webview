@@ -1378,6 +1378,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"idb@npm:^8.0.0":
+  version: 8.0.0
+  resolution: "idb@npm:8.0.0"
+  checksum: d27547e03939d3d269cea38c3d4528569621ec134c717ebfc1ff816dce18e4f77372dba1d930384a9949ac56dc600e3790f98f1812a4164004e71fec302ee491
+  languageName: node
+  linkType: hard
+
 "imurmurhash@npm:^0.1.4":
   version: 0.1.4
   resolution: "imurmurhash@npm:0.1.4"
@@ -1581,6 +1588,7 @@ __metadata:
   dependencies:
     "@rollup/plugin-node-resolve": "npm:^15.2.3"
     "@web/dev-server": "npm:^0.4.1"
+    idb: "npm:^8.0.0"
     lit: "npm:^3.1.0"
     rollup: "npm:^4.9.1"
     typescript: "npm:^5.3.3"
