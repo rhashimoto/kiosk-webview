@@ -79,9 +79,10 @@ class AppCalendarEvent extends LitElement {
   }
 
   #getTime() {
-    const date = new Date(this.event.start.dateTime || (this.event.start.date + 'T00:00'));
-    return date.toLocaleTimeString(undefined, { timeStyle: 'short' });
-
+    if (this.event.start.dateTime) {
+      const date = new Date(this.event.start.dateTime);
+      return date.toLocaleTimeString(undefined, { timeStyle: 'short' });
+    }
   }
 
   static get styles() {
