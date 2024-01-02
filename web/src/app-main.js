@@ -29,19 +29,22 @@ class AppMain extends LitElement {
   }
 
   #updateApp() {
-    const now = Date.now();
-    if (this.#isViewingTime(now)) {
-      if (this.#intervalCounter++ % 2) {
-        this.shadowRoot.getElementById('photos').dispatchEvent(new CustomEvent('show-photo'));
-        this.#show('photos');
+    try {
+      const now = Date.now();
+      if (this.#isViewingTime(now)) {
+        if (this.#intervalCounter++ % 2) {
+          this.shadowRoot.getElementById('photos')
+            .dispatchEvent(new CustomEvent('show-photo'));
+          this.#show('photos');
+        } else {
+          this.#show('calendar');
+        }
       } else {
-        this.#show('calendar');
+        this.#show('blackout');
       }
-    } else {
-      this.#show('blackout');
+    } finally {
+      setTimeout(() => this.#updateApp(), this.interval);
     }
-
-    setTimeout(() => this.#updateApp(), this.interval);
   }
 
   #isViewingTime(date) {

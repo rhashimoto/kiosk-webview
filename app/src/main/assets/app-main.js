@@ -728,6 +728,7 @@
   const POPULATE_THROTTLE = 1_000;
   const CACHE_BATCH_SIZE = 50;
   const DEFAULT_CACHE_NAME = 'mediaItems';
+  const LAST_SHUFFLE_KEY = 'last-shuffle-key';
 
   const dbReady = openDB('photos', 1, {
     upgrade(db, oldVersion) {
@@ -840,51 +841,50 @@
     async #showPhoto() {
       const cache = await caches.open(this.cacheName);
       const cacheKeys = await cache.keys();
-      const url = cacheKeys[0]?.url;
-      if (url) {
-        this.shadowRoot.innerHTML = '';
-        const img = document.createElement('img');
-        img.src = url;
-        this.shadowRoot.appendChild(img);
+      if (cacheKeys[0]) {
+        this.shadowRoot.querySelector('img').src = cacheKeys[0].url;
       }
       console.log(`cache contains ${cacheKeys.length} photos`);
 
       if (cacheKeys.length <= 1 && !this.#isCachingInProgress) {
         try {
           this.#isCachingInProgress = true;
-          await this.#cacheImages(cache, url);
+          await this.#cacheImages(cache);
         } finally {
           this.#isCachingInProgress = false;
         }
       }
     }
 
-    async #cacheImages(cache, url) {
-      const shuffleKey = url ?
-      new URL(url).searchParams.get('shuffleKey') :
-      '';
-
+    async #cacheImages(cache) {
+      // Get the next batch of photos from IndexedDB, starting at the
+      // last cached shuffle key.
       const db = await dbReady;
       const store = db.transaction('photos', 'readonly').store;
       const index = store.index('shuffle');
+      const lastShuffleKey = localStorage.getItem(LAST_SHUFFLE_KEY) || '';
       const photos = await index.getAll(
-        IDBKeyRange.lowerBound(shuffleKey, true),
+        IDBKeyRange.lowerBound(lastShuffleKey, true),
         CACHE_BATCH_SIZE);
       if (photos.length < CACHE_BATCH_SIZE) {
+        // The batch is not full so wrap around to the beginning of
+        // the shuffle keys.
         const morePhotos = await index.getAll(
-          IDBKeyRange.bound(Number.NEGATIVE_INFINITY, shuffleKey, false, true),
+          IDBKeyRange.bound(Number.NEGATIVE_INFINITY, lastShuffleKey, false, true),
           CACHE_BATCH_SIZE - photos.length);
         photos.push(...morePhotos);
       }
 
+      // Get fresh URLs for the photos in the batch.
       const mediaItemResults = await withGAPI(async gapi => {
         const response = await gapi.client.photoslibrary.mediaItems.batchGet({
           mediaItemIds: photos.map(photo => photo.id)
         });
         return response.result.mediaItemResults;
       });
-
       console.log(`received ${mediaItemResults.length} mediaItemResults`);
+
+      // Add the photos to the cache.
       for (let i = 0; i < mediaItemResults.length; ++i) {
         const mediaItemResult = mediaItemResults[i];
         if (mediaItemResult.status?.code === 5) {
@@ -895,15 +895,14 @@
           continue;
         }
 
-        // Fetch the image file.
+        // Cache the image file.
         const url = [
           mediaItemResult.mediaItem.baseUrl,
           `=w${this.clientWidth}-h${this.clientHeight}`
         ].join('');
         const response = await fetch(url, { mode: 'no-cors'});
-
-        // Store in the cache.
         cache.put(`https://example.com?shuffleKey=${photos[i].shuffleKey}`, response);
+        localStorage.setItem(LAST_SHUFFLE_KEY, photos[i].shuffleKey);
       }
     }
 
@@ -928,6 +927,7 @@
 
     render() {
       return x`
+      <img>
     `;
     }
   }
@@ -959,19 +959,22 @@
     }
 
     #updateApp() {
-      const now = Date.now();
-      if (this.#isViewingTime(now)) {
-        if (this.#intervalCounter++ % 2) {
-          this.shadowRoot.getElementById('photos').dispatchEvent(new CustomEvent('show-photo'));
-          this.#show('photos');
+      try {
+        const now = Date.now();
+        if (this.#isViewingTime(now)) {
+          if (this.#intervalCounter++ % 2) {
+            this.shadowRoot.getElementById('photos')
+              .dispatchEvent(new CustomEvent('show-photo'));
+            this.#show('photos');
+          } else {
+            this.#show('calendar');
+          }
         } else {
-          this.#show('calendar');
+          this.#show('blackout');
         }
-      } else {
-        this.#show('blackout');
+      } finally {
+        setTimeout(() => this.#updateApp(), this.interval);
       }
-
-      setTimeout(() => this.#updateApp(), this.interval);
     }
 
     #isViewingTime(date) {
