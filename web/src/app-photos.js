@@ -26,6 +26,8 @@ class AppPhotos extends LitElement {
     }
   }
 
+  #isCachingInProgress = false;
+
   constructor() {
     super();
     this.cacheName = DEFAULT_CACHE_NAME;
@@ -126,49 +128,61 @@ class AppPhotos extends LitElement {
     }
     console.log(`cache contains ${cacheKeys.length} photos`);
 
-    if (cacheKeys.length <= 1) {
-      const shuffleKey = url ?
-        new URL(url).searchParams.get('shuffleKey') :
-        '';
-
-      const db = await dbReady;
-      const store = db.transaction('photos', 'readonly').store;
-      const index = store.index('shuffle');
-      const photos = await index.getAll(
-        IDBKeyRange.lowerBound(shuffleKey, true),
-        CACHE_BATCH_SIZE);
-      if (photos.length < CACHE_BATCH_SIZE) {
-        const morePhotos = await index.getAll(
-          IDBKeyRange.bound(Number.NEGATIVE_INFINITY, shuffleKey, false, true),
-          CACHE_BATCH_SIZE - photos.length);
-        photos.push(...morePhotos);
+    if (cacheKeys.length <= 1 && !this.#isCachingInProgress) {
+      try {
+        this.#isCachingInProgress = true;
+        await this.#cacheImages(cache, url);
+      } finally {
+        this.#isCachingInProgress = false;
       }
+    }
+  }
 
-      const mediaItemResults = await withGAPI(async gapi => {
-        const response = await gapi.client.photoslibrary.mediaItems.batchGet({
-          mediaItemIds: photos.map(photo => photo.id)
-        });
-        return response.result.mediaItemResults;
+  async #cacheImages(cache, url) {
+    const shuffleKey = url ?
+    new URL(url).searchParams.get('shuffleKey') :
+    '';
+
+    const db = await dbReady;
+    const store = db.transaction('photos', 'readonly').store;
+    const index = store.index('shuffle');
+    const photos = await index.getAll(
+      IDBKeyRange.lowerBound(shuffleKey, true),
+      CACHE_BATCH_SIZE);
+    if (photos.length < CACHE_BATCH_SIZE) {
+      const morePhotos = await index.getAll(
+        IDBKeyRange.bound(Number.NEGATIVE_INFINITY, shuffleKey, false, true),
+        CACHE_BATCH_SIZE - photos.length);
+      photos.push(...morePhotos);
+    }
+
+    const mediaItemResults = await withGAPI(async gapi => {
+      const response = await gapi.client.photoslibrary.mediaItems.batchGet({
+        mediaItemIds: photos.map(photo => photo.id)
       });
+      return response.result.mediaItemResults;
+    });
 
-      console.log(`received ${mediaItemResults.length} mediaItemResults`);
-      for (let i = 0; i < mediaItemResults.length; ++i) {
-        const mediaItemResult = mediaItemResults[i];
-        if (mediaItemResult.status?.code === 5) {
-          // The media item was not found. Delete from IndexedDB.
-          console.log(`deleting photo ${mediaItemResult.mediaItem.id}`);
-          db.transaction('photos', 'readwrite').store
-            .delete(mediaItemResult.mediaItem.id);
-          continue
-        }
-
-        // Fetch the image file.
-        const url = mediaItemResult.mediaItem.baseUrl + `=w${this.clientWidth}-h${this.clientHeight}`;
-        const response = await fetch(url, { mode: 'no-cors'});
-
-        // Store in the cache.
-        cache.put(`https://example.com?shuffleKey=${photos[i].shuffleKey}`, response);
+    console.log(`received ${mediaItemResults.length} mediaItemResults`);
+    for (let i = 0; i < mediaItemResults.length; ++i) {
+      const mediaItemResult = mediaItemResults[i];
+      if (mediaItemResult.status?.code === 5) {
+        // The media item was not found. Delete from IndexedDB.
+        console.log(`deleting photo ${mediaItemResult.mediaItem.id}`);
+        db.transaction('photos', 'readwrite').store
+          .delete(mediaItemResult.mediaItem.id);
+        continue;
       }
+
+      // Fetch the image file.
+      const url = [
+        mediaItemResult.mediaItem.baseUrl,
+        `=w${this.clientWidth}-h${this.clientHeight}`
+      ].join('');
+      const response = await fetch(url, { mode: 'no-cors'});
+
+      // Store in the cache.
+      cache.put(`https://example.com?shuffleKey=${photos[i].shuffleKey}`, response);
     }
   }
 
