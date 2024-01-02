@@ -54,16 +54,21 @@ class HomeActivity: Activity() {
         val deviceAdmin = ComponentName(this, DeviceOwnerReceiver::class.java)
         DeviceOwnerReceiver.configurePolicy(this, deviceAdmin)
 
-        if (WebViewFeature.isFeatureSupported(WebViewFeature.SERVICE_WORKER_BASIC_USAGE)) {
-            val swController = ServiceWorkerControllerCompat.getInstance()
-            swController.setServiceWorkerClient(CustomServiceWorkerClient(this))
-        }
-
         val webView = WebView(this)
         webView.settings.domStorageEnabled = true
         webView.settings.javaScriptEnabled = true
         webView.settings.loadsImagesAutomatically = true
-        webView.webViewClient = CustomWebViewClient(this)
+
+        val webViewClient = CustomWebViewClient(this)
+        webView.webViewClient = webViewClient
+        if (WebViewFeature.isFeatureSupported(WebViewFeature.SERVICE_WORKER_BASIC_USAGE)) {
+            val swController = ServiceWorkerControllerCompat.getInstance()
+            swController.setServiceWorkerClient(object: ServiceWorkerClientCompat() {
+                override fun shouldInterceptRequest(request: WebResourceRequest): WebResourceResponse? {
+                    return webViewClient.shouldInterceptRequest(webView, request)
+                }
+            })
+        }
 
         // Send JavaScript console output to logcat.
         webView.webChromeClient = object: WebChromeClient() {
@@ -225,30 +230,4 @@ private class CustomWebViewClient(val activity: Activity): WebViewClientCompat()
 //            webView.reload()
 //        }
 //    }
-}
-
-private class CustomServiceWorkerClient(val activity: Activity): ServiceWorkerClientCompat() {
-    val assetLoader = WebViewAssetLoader.Builder()
-        .addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(activity))
-        .addPathHandler("/res/", WebViewAssetLoader.ResourcesPathHandler(activity))
-        .build()
-
-    override fun shouldInterceptRequest(request: WebResourceRequest): WebResourceResponse? {
-        Log.v("ServiceWorker", "${request.url}")
-        if (request.url.toString().startsWith("https://appassets.androidplatform.net")) {
-            when (request.url.path) {
-                "/x/accessToken" -> runBlocking {
-                    (activity.application as Application)
-                        .authorizationHelper
-                        .getAuthState()?.accessToken
-                }?.let { token ->
-                    return WebResourceResponse(
-                        "text/plain",
-                        "UTF-8",
-                        ByteArrayInputStream(token.toByteArray()))
-                }
-            }
-        }
-        return assetLoader.shouldInterceptRequest(request.url)
-    }
 }
