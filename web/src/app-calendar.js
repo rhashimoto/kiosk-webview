@@ -4,7 +4,7 @@ import { repeat } from 'lit/directives/repeat.js';
 import './app-calendar-event.js';
 import { withGAPI } from './gapi.js';
 
-const CALENDAR_POLL_INTERVAL = 300_000;
+const CALENDAR_POLL_INTERVAL = 10 * 60 * 1000;
 const CALENDAR_POLL_DURATION = 7 * 24 * 60 * 60 * 1000;
 
 class AppCalendar extends LitElement {
@@ -30,7 +30,7 @@ class AppCalendar extends LitElement {
     const date = new Date();
     this.dateHeader = date.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
     this.timeHeader = date.toLocaleTimeString(undefined, { timeStyle: 'short' }).toLowerCase();
-    setTimeout(() => this.#updateDate(), 1000);
+    setTimeout(() => this.#updateDate(), new Date().setSeconds(60, 0) - Date.now());
   }
 
   async #updateEvents() {

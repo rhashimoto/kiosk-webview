@@ -301,7 +301,7 @@
     return [401, 403].includes(e.result?.error?.code);
   }
 
-  const CALENDAR_POLL_INTERVAL = 300_000;
+  const CALENDAR_POLL_INTERVAL = 10 * 60 * 1000;
   const CALENDAR_POLL_DURATION = 7 * 24 * 60 * 60 * 1000;
 
   class AppCalendar extends s$1 {
@@ -327,7 +327,7 @@
       const date = new Date();
       this.dateHeader = date.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
       this.timeHeader = date.toLocaleTimeString(undefined, { timeStyle: 'short' }).toLowerCase();
-      setTimeout(() => this.#updateDate(), 1000);
+      setTimeout(() => this.#updateDate(), new Date().setSeconds(60, 0) - Date.now());
     }
 
     async #updateEvents() {
@@ -751,7 +751,6 @@
       super();
       this.cacheName = DEFAULT_CACHE_NAME;
 
-      this.#populatePhotos();
       this.addEventListener('populate-photos', () => this.#populatePhotos());
       this.addEventListener('show-photo', () => this.#showPhoto());
     }
@@ -772,6 +771,7 @@
       console.log(`lastTimestamp ${lastTimestamp}`);
 
       // Fetch photos from Google.
+      let nAdded = 0;
       const lastDate = new Date(lastTimestamp);
       const searchParams = {
         pageSize: 100,
@@ -802,7 +802,7 @@
 
         const photos = await withGAPI(async gapi => {
           const response = await gapi.client.photoslibrary.mediaItems.search(searchParams);
-          // searchParams.pageToken = response.result.nextPageToken;
+          searchParams.pageToken = response.result.nextPageToken;
           return response.result.mediaItems;
         });
         console.log(`received ${photos.length} photos`);
@@ -826,9 +826,13 @@
               .toString(36);
       
             store.put(p);
+            ++nAdded;
           }
         }
-      } while (searchParams.pageToken);
+      } while (nAdded === 0 && searchParams.pageToken);
+
+      const count = await db.transaction('photos', 'readonly').store.count();
+      console.log(`IndexedDB contains ${count} photos`);
     }
 
     async #showPhoto() {
@@ -840,9 +844,8 @@
         const img = document.createElement('img');
         img.src = url;
         this.shadowRoot.appendChild(img);
-      } else {
-        console.warn('no photos in cache');
       }
+      console.log(`cache contains ${cacheKeys.length} photos`);
 
       if (cacheKeys.length <= 1) {
         const shuffleKey = url ?
@@ -869,7 +872,7 @@
           return response.result.mediaItemResults;
         });
 
-        console.log(`received ${mediaItemResults.length} mediaItemResults}`);
+        console.log(`received ${mediaItemResults.length} mediaItemResults`);
         for (let i = 0; i < mediaItemResults.length; ++i) {
           const mediaItemResult = mediaItemResults[i];
           if (mediaItemResult.status?.code === 5) {
@@ -938,6 +941,7 @@
 
     firstUpdated() {
       this.#updateApp();
+      this.#populatePhotos();
     }
 
     #updateApp() {
@@ -988,6 +992,19 @@
           container.classList.add('retiring');
         }
       }  }
+
+    #populatePhotos() {
+      try {
+        console.log('populating photos');
+        this.shadowRoot.getElementById('photos')
+          .dispatchEvent(new CustomEvent('populate-photos'));
+      } finally {
+        const midnight = new Date().setHours(24, 0, 0, 0);
+        setTimeout(() => {
+          this.#populatePhotos();
+        }, midnight - Date.now());
+      }
+    }
 
     static get styles() {
       return i$3`

@@ -30,7 +30,6 @@ class AppPhotos extends LitElement {
     super();
     this.cacheName = DEFAULT_CACHE_NAME;
 
-    this.#populatePhotos();
     this.addEventListener('populate-photos', () => this.#populatePhotos());
     this.addEventListener('show-photo', () => this.#showPhoto());
   }
@@ -51,6 +50,7 @@ class AppPhotos extends LitElement {
     console.log(`lastTimestamp ${lastTimestamp}`);
 
     // Fetch photos from Google.
+    let nAdded = 0;
     const lastDate = new Date(lastTimestamp);
     const searchParams = {
       pageSize: 100,
@@ -81,7 +81,7 @@ class AppPhotos extends LitElement {
 
       const photos = await withGAPI(async gapi => {
         const response = await gapi.client.photoslibrary.mediaItems.search(searchParams);
-        // searchParams.pageToken = response.result.nextPageToken;
+        searchParams.pageToken = response.result.nextPageToken;
         return response.result.mediaItems;
       });
       console.log(`received ${photos.length} photos`);
@@ -105,9 +105,13 @@ class AppPhotos extends LitElement {
             .toString(36);
     
           store.put(p);
+          ++nAdded;
         }
       }
-    } while (searchParams.pageToken);
+    } while (nAdded === 0 && searchParams.pageToken);
+
+    const count = await db.transaction('photos', 'readonly').store.count();
+    console.log(`IndexedDB contains ${count} photos`);
   }
 
   async #showPhoto() {
@@ -119,9 +123,8 @@ class AppPhotos extends LitElement {
       const img = document.createElement('img');
       img.src = url;
       this.shadowRoot.appendChild(img);
-    } else {
-      console.warn('no photos in cache');
     }
+    console.log(`cache contains ${cacheKeys.length} photos`);
 
     if (cacheKeys.length <= 1) {
       const shuffleKey = url ?
@@ -148,7 +151,7 @@ class AppPhotos extends LitElement {
         return response.result.mediaItemResults;
       });
 
-      console.log(`received ${mediaItemResults.length} mediaItemResults}`);
+      console.log(`received ${mediaItemResults.length} mediaItemResults`);
       for (let i = 0; i < mediaItemResults.length; ++i) {
         const mediaItemResult = mediaItemResults[i];
         if (mediaItemResult.status?.code === 5) {

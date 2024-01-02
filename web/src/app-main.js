@@ -25,6 +25,7 @@ class AppMain extends LitElement {
 
   firstUpdated() {
     this.#updateApp();
+    this.#populatePhotos();
   }
 
   #updateApp() {
@@ -75,6 +76,19 @@ class AppMain extends LitElement {
         container.classList.add('retiring');
       }
     };
+  }
+
+  #populatePhotos() {
+    try {
+      console.log('populating photos');
+      this.shadowRoot.getElementById('photos')
+        .dispatchEvent(new CustomEvent('populate-photos'));
+    } finally {
+      const midnight = new Date().setHours(24, 0, 0, 0);
+      setTimeout(() => {
+        this.#populatePhotos();
+      }, midnight - Date.now());
+    }
   }
 
   static get styles() {
