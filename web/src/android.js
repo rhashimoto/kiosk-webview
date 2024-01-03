@@ -2,8 +2,8 @@
 const ANDROID_APP = 'https://appassets.androidplatform.net';
 
 export const isAndroidApp = (function() {
-  const hasAssetLoaderLocation = window.location.href.startsWith(ANDROID_APP);
-  return () => hasAssetLoaderLocation;
+  const doesUserAgentIncludeKiosk = navigator.userAgent.includes('Kiosk');
+  return () => doesUserAgentIncludeKiosk;
 })();
 
 export async function getAndroidResource(name) {

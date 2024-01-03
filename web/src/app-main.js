@@ -7,6 +7,7 @@ const VIEWING_RANGES = [
   [[7, 0, 0, 0],[19, 0, 0, 0]],
 ];
 
+console.log(`user agent: ${navigator.userAgent}`);
 navigator.serviceWorker.register('./sw.js')
 
 class AppMain extends LitElement {

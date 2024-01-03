@@ -58,6 +58,7 @@ class HomeActivity: Activity() {
         webView.settings.domStorageEnabled = true
         webView.settings.javaScriptEnabled = true
         webView.settings.loadsImagesAutomatically = true
+        webView.settings.userAgentString = "${webView.settings.userAgentString} Kiosk"
 
         val webViewClient = CustomWebViewClient(this)
         webView.webViewClient = webViewClient

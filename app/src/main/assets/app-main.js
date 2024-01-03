@@ -194,8 +194,8 @@
   const ANDROID_APP = 'https://appassets.androidplatform.net';
 
   const isAndroidApp = (function() {
-    const hasAssetLoaderLocation = window.location.href.startsWith(ANDROID_APP);
-    return () => hasAssetLoaderLocation;
+    const doesUserAgentIncludeKiosk = navigator.userAgent.includes('Kiosk');
+    return () => doesUserAgentIncludeKiosk;
   })();
 
   async function getAndroidResource(name) {
@@ -942,6 +942,7 @@
     [[7, 0, 0, 0],[19, 0, 0, 0]],
   ];
 
+  console.log(`user agent: ${navigator.userAgent}`);
   navigator.serviceWorker.register('./sw.js');
 
   class AppMain extends s$1 {
