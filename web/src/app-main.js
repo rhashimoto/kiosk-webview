@@ -7,8 +7,32 @@ const VIEWING_RANGES = [
   [[7, 0, 0, 0],[19, 0, 0, 0]],
 ];
 
-console.log(`user agent: ${navigator.userAgent}`);
-navigator.serviceWorker.register('./sw.js')
+navigator.serviceWorker.register('./sw.js');
+
+(async function() {
+  const SCRIPT_CHANGE_CHECK_MILLIS = 15 * 60 * 1000;
+
+  // Compute a digest on this script.
+  function getDigest() {
+    return fetch(import.meta.url)
+      .then(response => response.arrayBuffer())
+      .then(buffer => crypto.subtle.digest('SHA-256', buffer))
+      .then(digest => new BigUint64Array(digest)
+        .reduce((result, x) => (result << 64n) + x)
+        .toString(36));
+  }
+  const oldDigest = await getDigest();
+
+  // Poll for changes to this script and reload.
+  setInterval(async function() {
+    const newDigest = await getDigest();
+    if (newDigest !== oldDigest) {
+        window.location.reload();
+    } else {
+      console.debug('script unchanged');
+    }
+  }, SCRIPT_CHANGE_CHECK_MILLIS);
+})();
 
 class AppMain extends LitElement {
   static get properties() {
