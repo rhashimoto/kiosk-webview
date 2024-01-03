@@ -31,11 +31,8 @@ import androidx.webkit.WebViewFeature
 import kotlinx.coroutines.runBlocking
 import java.io.ByteArrayInputStream
 
-
+// Time window to enter lock mode exit code with volume buttons.
 const val CODE_TIMEOUT = 10L * 1000L
-
-//const val RELOAD_ERROR_COUNT = 5L
-//const val RELOAD_ERROR_MILLIS = 5L * 60L * 1000L
 
 class HomeActivity: Activity() {
     private lateinit var devicePolicyManager: DevicePolicyManager
@@ -167,8 +164,6 @@ private class CustomWebViewClient(val activity: Activity): WebViewClientCompat()
         .addPathHandler("/res/", WebViewAssetLoader.ResourcesPathHandler(activity))
         .build()
 
-//    val errorTimestamps = ArrayDeque<Long>()
-
     override fun onReceivedError(
         view: WebView,
         request: WebResourceRequest,
@@ -181,10 +176,6 @@ private class CustomWebViewClient(val activity: Activity): WebViewClientCompat()
             ""
         }
         Log.e("CustomWebViewClient", "onReceivedError ${request.url} $description")
-//        if (!request.url.toString().endsWith("favicon.ico")) {
-//            countErrors(view)
-//        }
-//        countErrors(view)
     }
 
     override fun onReceivedHttpError(
@@ -194,7 +185,6 @@ private class CustomWebViewClient(val activity: Activity): WebViewClientCompat()
     ) {
         super.onReceivedHttpError(view, request, errorResponse)
         Log.e("CustomWebViewClient", "onReceivedHttpError ${request.url} ${errorResponse.statusCode}")
-//        countErrors(view)
     }
 
     override fun shouldInterceptRequest(
@@ -213,22 +203,13 @@ private class CustomWebViewClient(val activity: Activity): WebViewClientCompat()
                         "text/plain",
                         "UTF-8",
                         ByteArrayInputStream(token.toByteArray()))
+                        .apply {
+                            responseHeaders = mapOf(
+                                "Access-Control-Allow-Origin" to "https://rhashimoto.github.io")
+                        }
                 }
             }
         }
         return assetLoader.shouldInterceptRequest(request.url)
     }
-
-//    private fun countErrors(webView: WebView) {
-//        val t = System.currentTimeMillis()
-//        errorTimestamps.addLast(t)
-//        while (t - errorTimestamps.first() > RELOAD_ERROR_MILLIS) {
-//            errorTimestamps.removeFirst()
-//        }
-//
-//        Log.w("CustomWebViewClient", "error count ${errorTimestamps.size}")
-//        if (errorTimestamps.size >= RELOAD_ERROR_COUNT) {
-//            webView.reload()
-//        }
-//    }
 }
