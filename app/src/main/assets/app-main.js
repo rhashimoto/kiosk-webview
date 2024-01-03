@@ -310,6 +310,7 @@
       return {
         dateHeader: { state: true },
         timeHeader: { state: true },
+        calendars: { attribute: null },
         events: { state: true }
       }
     }
@@ -318,6 +319,7 @@
       super();
       this.dateHeader = '';
       this.timeHeader = '';
+      this.calendars = [];
       this.events = [];
 
       this.#updateDate();
@@ -334,18 +336,20 @@
     async #updateEvents() {
       try {
         const events = await withGAPI(async gapi => {
+          if (this.calendars.length === 0) {
           // Get the calendars of interest.
-          const calendars = await gapi.client.calendar.calendarList.list({}).then(response => {
-            return response.result.items.filter(calendar => {
-              return calendar.selected &&
-                     ['owner', 'writer'].includes(calendar.accessRole);
+            this.calendars = await gapi.client.calendar.calendarList.list({}).then(response => {
+              return response.result.items.filter(calendar => {
+                return calendar.selected &&
+                      ['owner', 'writer'].includes(calendar.accessRole);
+              });
             });
-          });
+          }
 
           // Fetch calendar events.
-          const startTime = new Date().setHours(0,0,0,0);
+          const startTime = new Date().setHours(0, 0, 0, 0);
           const endTime = startTime + CALENDAR_POLL_DURATION;
-          return Promise.all(calendars.map(async calendar => {
+          return Promise.all(this.calendars.map(async calendar => {
             const response = await gapi.client.calendar.events.list({
               calendarId: calendar.id,
               orderBy: 'startTime',
