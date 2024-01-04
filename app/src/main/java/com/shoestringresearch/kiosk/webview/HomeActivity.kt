@@ -163,6 +163,13 @@ private class CustomWebViewClient(val activity: Activity): WebViewClientCompat()
         .addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(activity))
         .addPathHandler("/res/", WebViewAssetLoader.ResourcesPathHandler(activity))
         .build()
+    val origin: String?
+
+    init {
+        val prefs = PreferenceManager.getDefaultSharedPreferences(activity.application)
+        val url = prefs.getString("url", "about:blank")!!
+        origin = "^(https://[^/]+)".toRegex().find(url)?.value
+    }
 
     override fun onReceivedError(
         view: WebView,
@@ -205,7 +212,7 @@ private class CustomWebViewClient(val activity: Activity): WebViewClientCompat()
                         ByteArrayInputStream(token.toByteArray()))
                         .apply {
                             responseHeaders = mapOf(
-                                "Access-Control-Allow-Origin" to "https://rhashimoto.github.io")
+                                "Access-Control-Allow-Origin" to origin)
                         }
                 }
             }
