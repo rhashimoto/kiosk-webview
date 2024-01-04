@@ -913,16 +913,16 @@
           db.transaction('photos', 'readwrite').store
             .delete(mediaItemResult.mediaItem.id);
           continue;
+        } else if (mediaItemResult.mediaItem?.baseUrl) {
+          // Cache the image file.
+          const url = [
+            mediaItemResult.mediaItem.baseUrl,
+            `=w${this.clientWidth}-h${this.clientHeight}`
+          ].join('');
+          const response = await fetch(url, { mode: 'no-cors'});
+          cache.put(`https://example.com?shuffleKey=${photos[i].shuffleKey}`, response);
+          localStorage.setItem(LAST_SHUFFLE_KEY, photos[i].shuffleKey);
         }
-
-        // Cache the image file.
-        const url = [
-          mediaItemResult.mediaItem.baseUrl,
-          `=w${this.clientWidth}-h${this.clientHeight}`
-        ].join('');
-        const response = await fetch(url, { mode: 'no-cors'});
-        cache.put(`https://example.com?shuffleKey=${photos[i].shuffleKey}`, response);
-        localStorage.setItem(LAST_SHUFFLE_KEY, photos[i].shuffleKey);
       }
     }
 
