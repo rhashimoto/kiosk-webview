@@ -4,8 +4,13 @@ import { repeat } from 'lit/directives/repeat.js';
 import './app-calendar-event.js';
 import { withGAPI } from './gapi.js';
 
+/** @type {Intl.DateTimeFormatOptions} */
+const DATE_HEADER_FORMAT = { weekday: 'long', month: 'short', day: 'numeric' }
+/** @type {Intl.DateTimeFormatOptions} */
+const TIME_HEADER_FORMAT = { timeStyle: 'short' };
+
 const CALENDAR_POLL_INTERVAL = 10 * 60 * 1000;
-const CALENDAR_POLL_DURATION = 7 * 24 * 60 * 60 * 1000;
+const CALENDAR_WINDOW_SIZE = 7 * 24 * 60 * 60 * 1000;
 
 class AppCalendar extends LitElement {
   static get properties() {
@@ -30,61 +35,70 @@ class AppCalendar extends LitElement {
 
   #updateDate() {
     const date = new Date();
-    this.dateHeader = date.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
-    this.timeHeader = date.toLocaleTimeString(undefined, { timeStyle: 'short' }).toLowerCase();
+    this.dateHeader = date.toLocaleDateString(undefined, DATE_HEADER_FORMAT);
+    this.timeHeader = date.toLocaleTimeString(undefined, TIME_HEADER_FORMAT).toLowerCase();
     setTimeout(() => this.#updateDate(), new Date().setSeconds(60, 0) - Date.now());
   }
 
   async #updateEvents() {
     try {
-      const events = await withGAPI(async gapi => {
-        if (this.calendars.length === 0) {
-        // Get the calendars of interest.
-          this.calendars = await gapi.client.calendar.calendarList.list({}).then(response => {
-            return response.result.items.filter(calendar => {
-              return calendar.selected &&
-                    ['owner', 'writer'].includes(calendar.accessRole);
-            });
-          });
-        }
-
-        // Fetch calendar events.
-        const startTime = new Date().setHours(0, 0, 0, 0);
-        const endTime = startTime + CALENDAR_POLL_DURATION;
-        return Promise.all(this.calendars.map(async calendar => {
-          const response = await gapi.client.calendar.events.list({
-            calendarId: calendar.id,
-            orderBy: 'startTime',
-            singleEvents: true,
-            timeMin: new Date(startTime).toISOString(),
-            timeMax: new Date(endTime).toISOString()
-          });
-          return response.result.items;
-        }));
-      });
-
-      this.events = events
-        .flat()
-        .sort((a, b) => {
-          // Order by start time.
-          const aTime = a.start.dateTime || a.start.date;
-          const bTime = b.start.dateTime || b.start.date;
-          return aTime.localeCompare(bTime)
-        })
-        .filter((() => {
-          // Remove recurring events after the first instance.
-          const recurring = new Set();
-          return event => {
-            if (recurring.has(event.recurringEventId)) {
-              return false;
-            }
-            recurring.add(event.recurringEventId || '');
-            return true;
-          }
-        })())
-        .filter((_, i) => i < 9);
+      await this.#updateEventsHelper();
     } finally {
       setTimeout(() => this.#updateEvents(), CALENDAR_POLL_INTERVAL);
+    }
+  }
+
+  async #updateEventsHelper() {
+    await this.#loadCalendarListIfNeeded();
+    const events = await withGAPI(async gapi => {
+      // Fetch calendar events.
+      const startTime = new Date().setHours(0, 0, 0, 0);
+      const endTime = startTime + CALENDAR_WINDOW_SIZE;
+      return Promise.all(this.calendars.map(async calendar => {
+        const response = await gapi.client.calendar.events.list({
+          calendarId: calendar.id,
+          orderBy: 'startTime',
+          singleEvents: true,
+          timeMin: new Date(startTime).toISOString(),
+          timeMax: new Date(endTime).toISOString()
+        });
+        return response.result.items;
+      }));
+    });
+
+    this.events = events
+      .flat()
+      .sort((a, b) => {
+        // Order by start time.
+        const aTime = a.start.dateTime || a.start.date;
+        const bTime = b.start.dateTime || b.start.date;
+        return aTime.localeCompare(bTime)
+      })
+      .filter((() => {
+        // Remove recurring events after the first instance.
+        const recurring = new Set();
+        return event => {
+          if (recurring.has(event.recurringEventId)) {
+            return false;
+          }
+          recurring.add(event.recurringEventId || '');
+          return true;
+        }
+      })())
+      .filter((_, i) => i < 9);
+  }
+
+  #loadCalendarListIfNeeded() {
+    if (this.calendars.length === 0) {
+      return withGAPI(async gapi => {
+        // Get the calendars of interest.
+        this.calendars = await gapi.client.calendar.calendarList.list({}).then(response => {
+          return response.result.items.filter(calendar => {
+            return calendar.selected &&
+                   ['owner', 'writer'].includes(calendar.accessRole);
+          });
+        });
+      });
     }
   }
 
