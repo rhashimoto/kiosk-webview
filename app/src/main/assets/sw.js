@@ -12,11 +12,13 @@ globalThis.addEventListener('fetch', event => {
   const url = event.request.url;
   event.respondWith(mediaItemsCacheReady.then(async mediaItemsCache => {
     // Check for a cached mediaItem.
-    const response = await mediaItemsCache.match(url);
-    if (response) {
-      // Remove the cache entry and return the response.
+    try {
+      const response = await mediaItemsCache.match(url);
+      if (response) return response;
+    } catch (e) {
+      console.error(e.message);
+    } finally {
       mediaItemsCache.delete(url);
-      return response;
     }
     return fetch(event.request);
   }));
