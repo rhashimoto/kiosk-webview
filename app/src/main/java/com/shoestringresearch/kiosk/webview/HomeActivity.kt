@@ -1,7 +1,6 @@
 package com.shoestringresearch.kiosk.webview
 
 import android.annotation.SuppressLint
-import android.app.Activity
 import android.app.admin.DevicePolicyManager
 import android.content.ComponentName
 import android.content.Context
@@ -11,16 +10,21 @@ import android.os.Handler
 import android.util.Log
 import android.view.KeyEvent
 import android.view.WindowManager
+import android.view.View
 import android.webkit.ConsoleMessage
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.widget.Toast
+import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.edit
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import androidx.fragment.app.Fragment
+import androidx.fragment.app.add
+import androidx.fragment.app.commit
 import androidx.preference.PreferenceManager
 import androidx.webkit.ServiceWorkerClientCompat
 import androidx.webkit.ServiceWorkerControllerCompat
@@ -34,11 +38,10 @@ import java.io.ByteArrayInputStream
 // Time window to enter lock mode exit code with volume buttons.
 const val CODE_TIMEOUT = 10L * 1000L
 
-class HomeActivity: Activity() {
+class HomeActivity: AppCompatActivity(R.layout.home_activity) {
     private lateinit var devicePolicyManager: DevicePolicyManager
     private val code = StringBuilder()
 
-    @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -51,44 +54,14 @@ class HomeActivity: Activity() {
         val deviceAdmin = ComponentName(this, DeviceOwnerReceiver::class.java)
         DeviceOwnerReceiver.configurePolicy(this, deviceAdmin)
 
-        val webView = WebView(this)
-        webView.settings.domStorageEnabled = true
-        webView.settings.javaScriptEnabled = true
-        webView.settings.loadsImagesAutomatically = true
-        webView.settings.userAgentString = "${webView.settings.userAgentString} Kiosk"
-
-        val webViewClient = CustomWebViewClient(this)
-        webView.webViewClient = webViewClient
-        if (WebViewFeature.isFeatureSupported(WebViewFeature.SERVICE_WORKER_BASIC_USAGE)) {
-            val swController = ServiceWorkerControllerCompat.getInstance()
-            swController.setServiceWorkerClient(object: ServiceWorkerClientCompat() {
-                override fun shouldInterceptRequest(request: WebResourceRequest): WebResourceResponse? {
-                    return webViewClient.shouldInterceptRequest(webView, request)
-                }
-            })
-        }
-
-        // Send JavaScript console output to logcat.
-        webView.webChromeClient = object: WebChromeClient() {
-            override fun onConsoleMessage(m: ConsoleMessage): Boolean {
-                val s = "${m.sourceId()}:${m.lineNumber()} ${m.message()}"
-                when (m.messageLevel()) {
-                    ConsoleMessage.MessageLevel.DEBUG -> Log.d("WebChromeClient", s)
-                    ConsoleMessage.MessageLevel.LOG -> Log.i("WebChromeClient", s)
-                    ConsoleMessage.MessageLevel.WARNING -> Log.w("WebChromeClient", s)
-                    ConsoleMessage.MessageLevel.ERROR -> Log.e("WebChromeClient", s)
-                    else -> Log.i("WebChromeClient", s)
-                }
-                return true
+        if (savedInstanceState == null) {
+            supportFragmentManager.commit {
+                setReorderingAllowed(true)
+                add<WebViewFragment>(R.id.home_fragment_container)
             }
         }
 
-        setContentView(webView)
-
         val prefs = PreferenceManager.getDefaultSharedPreferences(this)
-        webView.loadUrl(prefs.getString("url", null) ?: "about:blank")
-//        webView.loadUrl("https://appassets.androidplatform.net/assets/test.html")
-
         requestedOrientation =
             if (prefs.getString("orientation", "portrait") == "portrait") {
                 ActivityInfo.SCREEN_ORIENTATION_USER_PORTRAIT
@@ -158,15 +131,46 @@ class HomeActivity: Activity() {
     }
 }
 
-private class CustomWebViewClient(val activity: Activity): WebViewClientCompat() {
+class WebViewFragment: Fragment(R.layout.webview_fragment) {
+    @SuppressLint("SetJavaScriptEnabled")
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+
+        val webView = view.findViewById<WebView>(R.id.webview)
+        webView.settings.javaScriptEnabled = true
+        webView.settings.loadsImagesAutomatically = true
+        webView.webViewClient = CustomWebViewClient(this)
+
+        // Send JavaScript console output to logcat.
+        webView.webChromeClient = object: WebChromeClient() {
+            override fun onConsoleMessage(m: ConsoleMessage): Boolean {
+                val s = "${m.sourceId()}:${m.lineNumber()} ${m.message()}"
+                when (m.messageLevel()) {
+                    ConsoleMessage.MessageLevel.DEBUG -> Log.d("WebChromeClient", s)
+                    ConsoleMessage.MessageLevel.LOG -> Log.i("WebChromeClient", s)
+                    ConsoleMessage.MessageLevel.WARNING -> Log.w("WebChromeClient", s)
+                    ConsoleMessage.MessageLevel.ERROR -> Log.e("WebChromeClient", s)
+                    else -> Log.i("WebChromeClient", s)
+                }
+                return true
+            }
+        }
+
+        val prefs = PreferenceManager.getDefaultSharedPreferences(requireActivity())
+        webView.loadUrl(prefs.getString("url", null) ?: "about:blank")
+//        webView.loadUrl("https://appassets.androidplatform.net/assets/test.html")
+    }
+}
+
+private class CustomWebViewClient(val fragment: Fragment): WebViewClientCompat() {
     val assetLoader = WebViewAssetLoader.Builder()
-        .addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(activity))
-        .addPathHandler("/res/", WebViewAssetLoader.ResourcesPathHandler(activity))
+        .addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(fragment.requireActivity()))
+        .addPathHandler("/res/", WebViewAssetLoader.ResourcesPathHandler(fragment.requireActivity()))
         .build()
     val origin: String?
 
     init {
-        val prefs = PreferenceManager.getDefaultSharedPreferences(activity.application)
+        val prefs = PreferenceManager.getDefaultSharedPreferences(fragment.requireActivity().application)
         val url = prefs.getString("url", "about:blank")!!
         origin = "^(https://[^/]+)".toRegex().find(url)?.value
     }
@@ -202,7 +206,7 @@ private class CustomWebViewClient(val activity: Activity): WebViewClientCompat()
         if (request.url.toString().startsWith("https://appassets.androidplatform.net")) {
             when (request.url.path) {
                 "/x/accessToken" -> runBlocking {
-                    (activity.application as Application)
+                    (fragment.requireActivity().application as Application)
                         .authorizationHelper
                         .getAuthState()?.accessToken
                 }?.let { token ->
