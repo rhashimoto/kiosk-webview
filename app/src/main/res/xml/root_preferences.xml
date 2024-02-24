@@ -25,10 +25,12 @@
         app:key="code"
         app:title="Unlock code"
         app:useSimpleSummaryProvider="true" />
+
     <EditTextPreference
         android:key="toothbrush_mac"
         android:selectAllOnFocus="true"
         android:singleLine="true"
-        android:title="Oral-B MAC" />
+        android:title="Oral-B MAC"
+        app:useSimpleSummaryProvider="true" />
 
 </PreferenceScreen>

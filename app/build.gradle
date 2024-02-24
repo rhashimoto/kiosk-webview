@@ -23,7 +23,7 @@ android {
     compileSdk 34
     defaultConfig {
         applicationId "com.shoestringresearch.kiosk.webview"
-        minSdk 21
+        minSdk 23
         //noinspection EditedTargetSdkVersion
         targetSdk 34
         versionCode 1

@@ -2,6 +2,12 @@ package com.shoestringresearch.kiosk.webview
 
 import android.annotation.SuppressLint
 import android.app.admin.DevicePolicyManager
+import android.bluetooth.BluetoothAdapter
+import android.bluetooth.BluetoothManager
+import android.bluetooth.le.ScanCallback
+import android.bluetooth.le.ScanFilter
+import android.bluetooth.le.ScanResult
+import android.bluetooth.le.ScanSettings
 import android.content.ComponentName
 import android.content.Context
 import android.content.pm.ActivityInfo
@@ -42,6 +48,20 @@ class HomeActivity: AppCompatActivity(R.layout.home_activity) {
     private lateinit var devicePolicyManager: DevicePolicyManager
     private val code = StringBuilder()
 
+    private val scanCallback = object: ScanCallback() {
+        override fun onScanResult(callbackType: Int, result: ScanResult) {
+            super.onScanResult(callbackType, result)
+            result.scanRecord?.let { scanRecord ->
+                val bytes = scanRecord.getManufacturerSpecificData(220)
+                requireNotNull(bytes)
+                val state = bytes[3].toInt() and 1
+                val secs = bytes[5].toUInt() * 256u + bytes[6].toUInt()
+                Log.d("MainActivity", "rssi ${result.rssi} on/off $state $secs s")
+            }
+        }
+    }
+
+    @SuppressLint("MissingPermission")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -58,6 +78,7 @@ class HomeActivity: AppCompatActivity(R.layout.home_activity) {
             supportFragmentManager.commit {
                 setReorderingAllowed(true)
                 add<WebViewFragment>(R.id.home_fragment_container)
+//                add<ToothbrushFragment>(R.id.home_fragment_container)
             }
         }
 
@@ -79,6 +100,35 @@ class HomeActivity: AppCompatActivity(R.layout.home_activity) {
         // Prevent screen from dimming.
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         window.attributes.screenBrightness = WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_FULL
+
+        Log.d("MainActivity", "start toothbrush scan")
+        val mac = prefs.getString("toothbrush_mac", "")
+        if (requireNotNull(mac).isNotEmpty()) {
+            val bluetoothManager: BluetoothManager =
+                getSystemService(BluetoothManager::class.java)
+            val bluetoothAdapter: BluetoothAdapter = bluetoothManager.adapter
+
+            val filter = ScanFilter.Builder()
+//                .setDeviceAddress("68:E7:4A:49:E1:A6")
+                .setDeviceAddress(mac)
+                .setManufacturerData(220, null)
+                .build()
+            val settings = ScanSettings.Builder()
+                .setCallbackType(ScanSettings.CALLBACK_TYPE_ALL_MATCHES)
+                .build()
+
+            bluetoothAdapter.bluetoothLeScanner.startScan(listOf(filter), settings, scanCallback)
+        }
+    }
+
+    @SuppressLint("MissingPermission")
+    override fun onDestroy() {
+        val bluetoothManager: BluetoothManager =
+            getSystemService(BluetoothManager::class.java)
+        val bluetoothAdapter: BluetoothAdapter = bluetoothManager.adapter
+        bluetoothAdapter.bluetoothLeScanner.stopScan(scanCallback)
+
+        super.onDestroy()
     }
 
     override fun onResume() {
