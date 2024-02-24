@@ -1,6 +1,9 @@
 package com.shoestringresearch.kiosk.webview
 
+import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import android.text.InputFilter
 import android.text.Spanned
@@ -9,15 +12,28 @@ import android.widget.Button
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
+import androidx.lifecycle.lifecycleScope
 import androidx.preference.EditTextPreference
 import androidx.preference.PreferenceFragmentCompat
 import com.google.gson.Gson
+import kotlinx.coroutines.launch
 import java.io.BufferedReader
 import java.io.InputStream
 import java.io.InputStreamReader
+import kotlin.coroutines.Continuation
+import kotlin.coroutines.resume
+import kotlin.coroutines.suspendCoroutine
 
 
 class SettingsActivity : AppCompatActivity() {
+    private lateinit var permissionContinuation : Continuation<List<String>>
+    private val permissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()) { map ->
+        val refused = map.keys.filter { key -> map[key] == false }
+        permissionContinuation.resume(refused)
+    }
+
     private val fileIntentLauncher =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
             Log.v("SettingsActivity", "file result $result")
@@ -64,6 +80,41 @@ class SettingsActivity : AppCompatActivity() {
 //                }
 //            }
 //        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        lifecycleScope.launch {
+            if (ActivityCompat.checkSelfPermission(
+                    this@SettingsActivity,
+                    Manifest.permission.BLUETOOTH_SCAN
+                ) != PackageManager.PERMISSION_GRANTED
+            ) {
+                requestPermissions()
+            }
+        }
+    }
+
+    private suspend fun requestPermissions() {
+        var ungranted = getUngrantedPermissions()
+        while (ungranted.isNotEmpty()) {
+            Log.d("MainActivity", "requesting permissions")
+            ungranted = suspendCoroutine {
+                permissionContinuation = it
+                permissionLauncher.launch(ungranted.toTypedArray())
+            }
+        }
+    }
+
+    private fun getUngrantedPermissions(): List<String> {
+        val packageInfo = packageManager.getPackageInfo(
+            packageName,
+            PackageManager.GET_PERMISSIONS)
+        return packageInfo.requestedPermissions.filter {
+            it != Manifest.permission.BLUETOOTH_SCAN || Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+        }.filter {
+            ActivityCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
+        }
     }
 
     private fun onAuthButtonClick() {

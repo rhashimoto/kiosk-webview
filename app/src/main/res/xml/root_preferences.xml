@@ -1,4 +1,5 @@
-<PreferenceScreen xmlns:app="http://schemas.android.com/apk/res-auto">
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
 
     <EditTextPreference
         app:defaultValue="https://appassets.androidplatform.net/assets/index.html"
@@ -24,5 +25,10 @@
         app:key="code"
         app:title="Unlock code"
         app:useSimpleSummaryProvider="true" />
+    <EditTextPreference
+        android:key="toothbrush_mac"
+        android:selectAllOnFocus="true"
+        android:singleLine="true"
+        android:title="Oral-B MAC" />
 
 </PreferenceScreen>
