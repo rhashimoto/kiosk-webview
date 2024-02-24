@@ -66,10 +66,22 @@ android {
     lint {
         checkReleaseBuilds false
     }
+
+    buildFeatures {
+        compose true
+    }
+
+    composeOptions {
+        kotlinCompilerExtensionVersion = "1.5.9"
+    }
 }
 
 dependencies {
     def fragment_version = "1.6.2"
+
+    def composeBom = platform('androidx.compose:compose-bom:2024.02.01')
+    implementation composeBom
+    androidTestImplementation composeBom
 
     implementation 'androidx.appcompat:appcompat:1.6.1'
     implementation 'androidx.preference:preference-ktx:1.2.1'
@@ -92,7 +104,13 @@ dependencies {
     implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.7.0'
     implementation 'androidx.activity:activity-ktx:1.8.2'
     implementation "androidx.fragment:fragment-ktx:$fragment_version"
+    implementation 'androidx.compose.material3:material3'
+    implementation 'androidx.compose.ui:ui-android:1.6.2'
     implementation("androidx.preference:preference-ktx:1.2.1")
     implementation("androidx.datastore:datastore-preferences:1.0.0")
     implementation 'androidx.webkit:webkit:1.10.0'
+
+    // Android Studio tooling
+    implementation 'androidx.compose.ui:ui-tooling-preview'
+    debugImplementation 'androidx.compose.ui:ui-tooling'
 }
