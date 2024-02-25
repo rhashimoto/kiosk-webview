@@ -2,7 +2,6 @@ package com.shoestringresearch.kiosk.webview
 
 import android.annotation.SuppressLint
 import android.os.Bundle
-import android.os.Handler
 import android.util.Log
 import android.view.View
 import android.webkit.ConsoleMessage
@@ -12,9 +11,12 @@ import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import androidx.fragment.app.Fragment
 import androidx.preference.PreferenceManager
+import androidx.webkit.ServiceWorkerClientCompat
+import androidx.webkit.ServiceWorkerControllerCompat
 import androidx.webkit.WebResourceErrorCompat
 import androidx.webkit.WebViewAssetLoader
 import androidx.webkit.WebViewClientCompat
+import androidx.webkit.WebViewFeature
 import kotlinx.coroutines.runBlocking
 import java.io.ByteArrayInputStream
 
@@ -24,9 +26,21 @@ class WebViewFragment: Fragment(R.layout.webview_fragment) {
         super.onViewCreated(view, savedInstanceState)
 
         val webView = view.findViewById<WebView>(R.id.webview)
+        webView.settings.domStorageEnabled = true
         webView.settings.javaScriptEnabled = true
         webView.settings.loadsImagesAutomatically = true
-        webView.webViewClient = CustomWebViewClient(this)
+        webView.settings.userAgentString = "${webView.settings.userAgentString} Kiosk"
+
+        val webViewClient = CustomWebViewClient(this)
+        if (WebViewFeature.isFeatureSupported(WebViewFeature.SERVICE_WORKER_BASIC_USAGE)) {
+            val swController = ServiceWorkerControllerCompat.getInstance()
+            swController.setServiceWorkerClient(object: ServiceWorkerClientCompat() {
+                override fun shouldInterceptRequest(request: WebResourceRequest): WebResourceResponse? {
+                    return webViewClient.shouldInterceptRequest(webView, request)
+                }
+            })
+        }
+        webView.webViewClient = webViewClient
 
         // Send JavaScript console output to logcat.
         webView.webChromeClient = object: WebChromeClient() {
@@ -54,14 +68,12 @@ private class CustomWebViewClient(val fragment: Fragment): WebViewClientCompat()
         .addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(fragment.requireActivity()))
         .addPathHandler("/res/", WebViewAssetLoader.ResourcesPathHandler(fragment.requireActivity()))
         .build()
+    val origin: String?
 
-    val pending = HashSet<WebView>()
-    val runnable = Runnable {
-        Log.v("HomeActivity", "reloading")
-        pending.forEach {
-            it.reload()
-        }
-        pending.clear()
+    init {
+        val prefs = PreferenceManager.getDefaultSharedPreferences(fragment.requireContext())
+        val url = prefs.getString("url", "about:blank")!!
+        origin = "^(https://[^/]+)".toRegex().find(url)?.value
     }
 
     override fun onReceivedError(
@@ -70,8 +82,12 @@ private class CustomWebViewClient(val fragment: Fragment): WebViewClientCompat()
         error: WebResourceErrorCompat
     ) {
         super.onReceivedError(view, request, error)
-        Log.e("HomeActivity", "onReceivedError ${request.url} $error")
-        scheduleReload(view)
+        val description = if (WebViewFeature.isFeatureSupported(WebViewFeature.WEB_RESOURCE_ERROR_GET_DESCRIPTION)) {
+            error.description
+        } else {
+            ""
+        }
+        Log.e("CustomWebViewClient", "onReceivedError ${request.url} $description")
     }
 
     override fun onReceivedHttpError(
@@ -80,20 +96,17 @@ private class CustomWebViewClient(val fragment: Fragment): WebViewClientCompat()
         errorResponse: WebResourceResponse
     ) {
         super.onReceivedHttpError(view, request, errorResponse)
-        Log.e("HomeActivity", "onReceivedHttpError ${request.url}")
-        if (!request.url.toString().endsWith("favicon.ico")) {
-            scheduleReload(view)
-        }
+        Log.e("CustomWebViewClient", "onReceivedHttpError ${request.url} ${errorResponse.statusCode}")
     }
 
     override fun shouldInterceptRequest(
         view: WebView,
         request: WebResourceRequest
     ): WebResourceResponse? {
+        Log.v("CustomWebViewClient", "webview ${request.url}")
         if (request.url.toString().startsWith("https://appassets.androidplatform.net")) {
-            if (request.url.path == "/x/token") {
-                // Return OAuth2 access token.
-                runBlocking {
+            when (request.url.path) {
+                "/x/accessToken" -> runBlocking {
                     (fragment.requireActivity().application as Application)
                         .authorizationHelper
                         .getAuthState()?.accessToken
@@ -101,19 +114,14 @@ private class CustomWebViewClient(val fragment: Fragment): WebViewClientCompat()
                     return WebResourceResponse(
                         "text/plain",
                         "UTF-8",
-                        ByteArrayInputStream(token.toByteArray())
-                    )
+                        ByteArrayInputStream(token.toByteArray()))
+                        .apply {
+                            responseHeaders = mapOf(
+                                "Access-Control-Allow-Origin" to origin)
+                        }
                 }
             }
         }
         return assetLoader.shouldInterceptRequest(request.url)
-    }
-
-    private fun scheduleReload(webView: WebView) {
-        Log.v("HomeActivity", "scheduleReload")
-        if (!pending.contains(webView)) {
-            pending.add(webView)
-            Handler(fragment.requireActivity().mainLooper).postDelayed(runnable, RELOAD_DELAY_MILLIS)
-        }
     }
 }
