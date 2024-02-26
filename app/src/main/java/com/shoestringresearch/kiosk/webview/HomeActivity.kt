@@ -16,12 +16,6 @@ import android.os.Handler
 import android.util.Log
 import android.view.KeyEvent
 import android.view.WindowManager
-import android.view.View
-import android.webkit.ConsoleMessage
-import android.webkit.WebChromeClient
-import android.webkit.WebResourceRequest
-import android.webkit.WebResourceResponse
-import android.webkit.WebView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.edit
@@ -30,7 +24,11 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.fragment.app.commit
 import androidx.fragment.app.replace
+import androidx.lifecycle.lifecycleScope
 import androidx.preference.PreferenceManager
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import java.util.Calendar
 import java.util.Timer
 import java.util.TimerTask
@@ -123,9 +121,9 @@ class HomeActivity: AppCompatActivity(R.layout.home_activity) {
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         window.attributes.screenBrightness = WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_FULL
 
-        Log.d("MainActivity", "start toothbrush scan")
         val mac = prefs.getString("toothbrush_mac", "")
         if (requireNotNull(mac).isNotEmpty()) {
+            Log.d("HomeActivity", "start toothbrush scan")
             val bluetoothManager: BluetoothManager =
                 getSystemService(BluetoothManager::class.java)
             val bluetoothAdapter: BluetoothAdapter = bluetoothManager.adapter
@@ -139,7 +137,19 @@ class HomeActivity: AppCompatActivity(R.layout.home_activity) {
                 .setCallbackType(ScanSettings.CALLBACK_TYPE_ALL_MATCHES)
                 .build()
 
-            bluetoothAdapter.bluetoothLeScanner.startScan(listOf(filter), settings, scanCallback)
+            lifecycleScope.launch(Dispatchers.Main) {
+                var isScanning = false
+                do {
+                    if (bluetoothAdapter.bluetoothLeScanner != null) {
+                        bluetoothAdapter.bluetoothLeScanner.startScan(listOf(filter), settings, scanCallback)
+                        isScanning = true
+                        Log.d("HomeActivity", "toothbrush scan started")
+                    } else {
+                        Log.d("HomeActivity", "Bluetooth not ready to scan")
+                        delay(3000)
+                    }
+                } while (!isScanning)
+            }
         }
     }
 
@@ -148,7 +158,7 @@ class HomeActivity: AppCompatActivity(R.layout.home_activity) {
         val bluetoothManager: BluetoothManager =
             getSystemService(BluetoothManager::class.java)
         val bluetoothAdapter: BluetoothAdapter = bluetoothManager.adapter
-        bluetoothAdapter.bluetoothLeScanner.stopScan(scanCallback)
+        bluetoothAdapter.bluetoothLeScanner?.stopScan(scanCallback)
 
         super.onDestroy()
     }
