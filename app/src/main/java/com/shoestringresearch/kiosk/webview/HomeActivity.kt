@@ -32,6 +32,7 @@ import kotlinx.coroutines.launch
 import java.util.Calendar
 import java.util.Timer
 import java.util.TimerTask
+import java.util.concurrent.atomic.AtomicReference
 
 // Time window to enter lock mode exit code with volume buttons.
 const val CODE_TIMEOUT = 10L * 1000L
@@ -61,10 +62,11 @@ class HomeActivity: AppCompatActivity(R.layout.home_activity) {
     private val code = StringBuilder()
 
     enum class Screen { WEBVIEW, TOOTHBRUSH }
-    private lateinit var screen: Screen
+    private val screen: AtomicReference<Screen?> = AtomicReference(null)
+    private val screenTimer = Timer()
 
     data class Brushing(val time: Long, val duration: Int)
-    private var brushing = Brushing(System.currentTimeMillis(), 0)
+    private var brushing = AtomicReference(Brushing(System.currentTimeMillis(), 0))
 
     private val scanCallback = object: ScanCallback() {
         override fun onScanResult(callbackType: Int, result: ScanResult) {
@@ -76,7 +78,7 @@ class HomeActivity: AppCompatActivity(R.layout.home_activity) {
                     val secs = (bytes[5].toUInt() * 256u + bytes[6].toUInt()).toInt()
                     Log.d("MainActivity", "rssi ${result.rssi} $secs s")
 
-                    brushing = Brushing(System.currentTimeMillis(), secs)
+                    brushing.set(Brushing(System.currentTimeMillis(), secs))
                     setScreen(Screen.WEBVIEW)
                 }
             }
@@ -208,7 +210,7 @@ class HomeActivity: AppCompatActivity(R.layout.home_activity) {
 
                     // Trigger brushing screen for demonstration.
                     if (code.toString() == "dd") {
-                        brushing = Brushing(System.currentTimeMillis() - 8 * 3600 * 1000, 120)
+                        brushing.set(Brushing(System.currentTimeMillis() - 8 * 3600 * 1000, 120))
                         checkToothbrush(false)
                     }
                     code.setLength(0)
@@ -218,25 +220,23 @@ class HomeActivity: AppCompatActivity(R.layout.home_activity) {
         return super.onKeyDown(keyCode, event)
     }
 
-    fun getBrushingTime() : Long {
-        return brushing.time
-    }
-
-    fun getBrushingDuration() : Int {
-        return brushing.duration
+    fun getBrushing(): Brushing {
+        return brushing.get()
     }
 
     private fun setScreen(newScreen: Screen) {
-        if (!this::screen.isInitialized || newScreen != screen) {
-            screen = newScreen
-            supportFragmentManager.commit {
-                setReorderingAllowed(true)
-                when(newScreen) {
-                    Screen.WEBVIEW -> {
-                        replace<WebViewFragment>(R.id.home_fragment_container)
-                    }
-                    Screen.TOOTHBRUSH -> {
-                        replace<ToothbrushFragment>(R.id.home_fragment_container)
+        if (newScreen != screen.get()) {
+            screen.set(newScreen)
+            lifecycleScope.launch(Dispatchers.Main) {
+                supportFragmentManager.commit {
+                    setReorderingAllowed(true)
+                    when(newScreen) {
+                        Screen.WEBVIEW -> {
+                            replace<WebViewFragment>(R.id.home_fragment_container)
+                        }
+                        Screen.TOOTHBRUSH -> {
+                            replace<ToothbrushFragment>(R.id.home_fragment_container)
+                        }
                     }
                 }
             }
@@ -245,7 +245,7 @@ class HomeActivity: AppCompatActivity(R.layout.home_activity) {
 
     private fun checkToothbrush(reschedule: Boolean = true) {
         Log.d("HomeActivity", "checkToothbrush")
-        if (System.currentTimeMillis() - brushing.time > TOOTHBRUSH_WINDOW) {
+        if (System.currentTimeMillis() - brushing.get().time > TOOTHBRUSH_WINDOW) {
             setScreen(Screen.TOOTHBRUSH)
         }
 
@@ -276,8 +276,7 @@ class HomeActivity: AppCompatActivity(R.layout.home_activity) {
             }.sorted()[0]
 
             Log.d("HomeActivity", "scheduling ${next}, ${next - now.timeInMillis}")
-            val timer = Timer()
-            timer.schedule(object : TimerTask() {
+            screenTimer.schedule(object : TimerTask() {
                 override fun run() {
                     checkToothbrush()
                 }

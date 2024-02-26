@@ -82,7 +82,8 @@ class ToothbrushFragment: Fragment() {
         super.onResume()
 
         val activity = requireActivity() as HomeActivity
-        brushTime = activity.getBrushingTime()
-        brushDuration = activity.getBrushingDuration()
+        val brushing = activity.getBrushing()
+        brushTime = brushing.time
+        brushDuration = brushing.duration
     }
 }
