@@ -27,8 +27,15 @@ import androidx.fragment.app.replace
 import androidx.lifecycle.lifecycleScope
 import androidx.preference.PreferenceManager
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.launch
+import java.io.OutputStreamWriter
+import java.net.HttpURLConnection
+import java.net.URL
 import java.util.Calendar
 import java.util.Timer
 import java.util.TimerTask
@@ -37,7 +44,7 @@ import java.util.concurrent.atomic.AtomicReference
 // Time window to enter lock mode exit code with volume buttons.
 const val CODE_TIMEOUT = 10L * 1000L
 
-val TOOTHBRUSH_WINDOW = 900000 // 2 * 60 * 60 * 1000L
+const val TOOTHBRUSH_WINDOW = 900000 // 2 * 60 * 60 * 1000L
 val TOOTHBRUSH_TIMES = arrayOf(
     arrayOf(7, 0),
     arrayOf(8, 0),
@@ -67,6 +74,9 @@ class HomeActivity: AppCompatActivity(R.layout.home_activity) {
 
     data class Brushing(val time: Long, val duration: Int)
     private var brushing = AtomicReference(Brushing(System.currentTimeMillis(), 0))
+    private val brushingFlow = MutableSharedFlow<Brushing>(
+        extraBufferCapacity = 32,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST)
 
     private val scanCallback = object: ScanCallback() {
         override fun onScanResult(callbackType: Int, result: ScanResult) {
@@ -78,13 +88,16 @@ class HomeActivity: AppCompatActivity(R.layout.home_activity) {
                     val secs = (bytes[5].toUInt() * 256u + bytes[6].toUInt()).toInt()
                     Log.d("MainActivity", "rssi ${result.rssi} $secs s")
 
-                    brushing.set(Brushing(System.currentTimeMillis(), secs))
+                    val b = Brushing(System.currentTimeMillis(), secs)
+                    brushing.set(b)
+                    brushingFlow.tryEmit(b)
                     setScreen(Screen.WEBVIEW)
                 }
             }
         }
     }
 
+    @OptIn(FlowPreview::class)
     @SuppressLint("MissingPermission")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -123,23 +136,23 @@ class HomeActivity: AppCompatActivity(R.layout.home_activity) {
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         window.attributes.screenBrightness = WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_FULL
 
-        val mac = prefs.getString("toothbrush_mac", "")
-        if (requireNotNull(mac).isNotEmpty()) {
+        val mac = prefs.getString("toothbrush_mac", null)
+        if (mac != null) {
             Log.d("HomeActivity", "start toothbrush scan")
-            val bluetoothManager: BluetoothManager =
-                getSystemService(BluetoothManager::class.java)
-            val bluetoothAdapter: BluetoothAdapter = bluetoothManager.adapter
+            lifecycleScope.launch(Dispatchers.IO) {
+                val bluetoothManager: BluetoothManager =
+                    getSystemService(BluetoothManager::class.java)
+                val bluetoothAdapter: BluetoothAdapter = bluetoothManager.adapter
 
-            val filter = ScanFilter.Builder()
+                val filter = ScanFilter.Builder()
 //                .setDeviceAddress("68:E7:4A:49:E1:A6")
-                .setDeviceAddress(mac)
-                .setManufacturerData(220, null)
-                .build()
-            val settings = ScanSettings.Builder()
-                .setCallbackType(ScanSettings.CALLBACK_TYPE_ALL_MATCHES)
-                .build()
+                    .setDeviceAddress(mac)
+                    .setManufacturerData(220, null)
+                    .build()
+                val settings = ScanSettings.Builder()
+                    .setCallbackType(ScanSettings.CALLBACK_TYPE_ALL_MATCHES)
+                    .build()
 
-            lifecycleScope.launch(Dispatchers.Main) {
                 var isScanning = false
                 do {
                     if (bluetoothAdapter.bluetoothLeScanner != null) {
@@ -151,6 +164,29 @@ class HomeActivity: AppCompatActivity(R.layout.home_activity) {
                         delay(3000)
                     }
                 } while (!isScanning)
+
+                val chatWebHook = prefs.getString("chat_webhook", null)
+                if (chatWebHook != null) {
+                    brushingFlow.debounce(30000L).collect { brushing ->
+                        try {
+                            Log.d("HomeActivity", "Logging brushing to Google Chat")
+                            val connection = URL(chatWebHook).openConnection() as HttpURLConnection
+                            connection.requestMethod = "POST"
+                            connection.setRequestProperty(
+                                "Content-Type",
+                                "application/json; charset=UTF-8"
+                            )
+                            val writer = OutputStreamWriter(connection.outputStream)
+                            writer.write("{ \"text\": \"Brushed for ${brushing.duration} seconds\" }")
+                            writer.flush()
+                            writer.close()
+                            connection.inputStream
+                            connection.disconnect()
+                        } catch (e: Exception) {
+                            Log.e("HomeActivity", "Chat error ${e.message}")
+                        }
+                    }
+                }
             }
         }
     }
