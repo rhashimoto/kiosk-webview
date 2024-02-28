@@ -44,23 +44,23 @@ import java.util.concurrent.atomic.AtomicReference
 // Time window to enter lock mode exit code with volume buttons.
 const val CODE_TIMEOUT = 10L * 1000L
 
-const val TOOTHBRUSH_WINDOW = 900000 // 2 * 60 * 60 * 1000L
+const val TOOTHBRUSH_WINDOW = 2 * 60 * 60 * 1000L
 val TOOTHBRUSH_TIMES = arrayOf(
-    arrayOf(7, 0),
-    arrayOf(8, 0),
+//    arrayOf(7, 0),
+//    arrayOf(8, 0),
     arrayOf(9, 0),
-    arrayOf(10, 0),
-    arrayOf(10, 30),
-    arrayOf(11, 0),
-    arrayOf(11, 30),
-    arrayOf(12, 0),
-    arrayOf(12, 30),
-    arrayOf(13, 30),
-    arrayOf(14, 30),
-    arrayOf(15, 30),
-    arrayOf(16, 30),
-    arrayOf(17, 30),
-    arrayOf(18, 30),
+//    arrayOf(10, 0),
+//    arrayOf(10, 30),
+//    arrayOf(11, 0),
+//    arrayOf(11, 30),
+//    arrayOf(12, 0),
+//    arrayOf(12, 30),
+//    arrayOf(13, 30),
+//    arrayOf(14, 30),
+//    arrayOf(15, 30),
+//    arrayOf(16, 30),
+//    arrayOf(17, 30),
+//    arrayOf(18, 30),
     arrayOf(19, 30),
 )
 
@@ -101,6 +101,7 @@ class HomeActivity: AppCompatActivity(R.layout.home_activity) {
     @SuppressLint("MissingPermission")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        Log.d("HomeActivity", "onCreate")
 
         devicePolicyManager = getSystemService(Context.DEVICE_POLICY_SERVICE)
             as DevicePolicyManager
@@ -111,9 +112,7 @@ class HomeActivity: AppCompatActivity(R.layout.home_activity) {
         val deviceAdmin = ComponentName(this, DeviceOwnerReceiver::class.java)
         DeviceOwnerReceiver.configurePolicy(this, deviceAdmin)
 
-        if (savedInstanceState == null) {
-            setScreen(Screen.WEBVIEW)
-        }
+        setScreen(Screen.WEBVIEW)
 
         checkToothbrush()
 
@@ -193,16 +192,20 @@ class HomeActivity: AppCompatActivity(R.layout.home_activity) {
 
     @SuppressLint("MissingPermission")
     override fun onDestroy() {
+        Log.d("HomeActivity", "onDestroy")
         val bluetoothManager: BluetoothManager =
             getSystemService(BluetoothManager::class.java)
         val bluetoothAdapter: BluetoothAdapter = bluetoothManager.adapter
         bluetoothAdapter.bluetoothLeScanner?.stopScan(scanCallback)
+
+        screenTimer.cancel()
 
         super.onDestroy()
     }
 
     override fun onResume() {
         super.onResume()
+        Log.d("HomeActivity", "onResume")
 
         if (devicePolicyManager.isLockTaskPermitted(packageName)) {
             val prefs = PreferenceManager.getDefaultSharedPreferences(this)
@@ -262,6 +265,7 @@ class HomeActivity: AppCompatActivity(R.layout.home_activity) {
 
     private fun setScreen(newScreen: Screen) {
         if (newScreen != screen.get()) {
+            Log.d("HomeActivity", "setScreen ${newScreen.toString()}")
             screen.set(newScreen)
             lifecycleScope.launch(Dispatchers.Main) {
                 supportFragmentManager.commit {
