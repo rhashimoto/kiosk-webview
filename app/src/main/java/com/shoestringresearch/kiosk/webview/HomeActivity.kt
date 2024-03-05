@@ -47,8 +47,8 @@ const val CODE_TIMEOUT = 10L * 1000L
 const val TOOTHBRUSH_WINDOW = 2 * 60 * 60 * 1000L
 val TOOTHBRUSH_TIMES = arrayOf(
 //    arrayOf(7, 0),
-//    arrayOf(8, 0),
-    arrayOf(9, 0),
+    arrayOf(8, 0),
+//    arrayOf(9, 0),
 //    arrayOf(10, 0),
 //    arrayOf(10, 30),
 //    arrayOf(11, 0),
@@ -60,8 +60,8 @@ val TOOTHBRUSH_TIMES = arrayOf(
 //    arrayOf(15, 30),
 //    arrayOf(16, 30),
 //    arrayOf(17, 30),
-//    arrayOf(18, 30),
-    arrayOf(19, 30),
+    arrayOf(18, 0),
+//    arrayOf(19, 30),
 )
 
 class HomeActivity: AppCompatActivity(R.layout.home_activity) {
@@ -96,6 +96,8 @@ class HomeActivity: AppCompatActivity(R.layout.home_activity) {
             }
         }
     }
+
+    private var chatWebHook: String? = null
 
     @OptIn(FlowPreview::class)
     @SuppressLint("MissingPermission")
@@ -164,8 +166,9 @@ class HomeActivity: AppCompatActivity(R.layout.home_activity) {
                     }
                 } while (!isScanning)
 
-                val chatWebHook = prefs.getString("chat_webhook", null)
+                chatWebHook = prefs.getString("chat_webhook", null)
                 if (chatWebHook != null) {
+                    postMessage("kiosk-webview launched")
                     brushingFlow.debounce(30000L).collect { brushing ->
                         try {
                             Log.d("HomeActivity", "Logging brushing to Google Chat")
@@ -265,7 +268,7 @@ class HomeActivity: AppCompatActivity(R.layout.home_activity) {
 
     private fun setScreen(newScreen: Screen) {
         if (newScreen != screen.get()) {
-            Log.d("HomeActivity", "setScreen ${newScreen.toString()}")
+            Log.d("HomeActivity", "setScreen $newScreen")
             screen.set(newScreen)
             lifecycleScope.launch(Dispatchers.Main) {
                 supportFragmentManager.commit {
@@ -321,6 +324,26 @@ class HomeActivity: AppCompatActivity(R.layout.home_activity) {
                     checkToothbrush()
                 }
             }, next - now.timeInMillis)
+        }
+    }
+
+    private fun postMessage(message: String) {
+        try {
+            Log.d("HomeActivity", "posting '$message'")
+            val connection = URL(chatWebHook).openConnection() as HttpURLConnection
+            connection.requestMethod = "POST"
+            connection.setRequestProperty(
+                "Content-Type",
+                "application/json; charset=UTF-8"
+            )
+            val writer = OutputStreamWriter(connection.outputStream)
+            writer.write("{ \"text\": \"${message}\" }")
+            writer.flush()
+            writer.close()
+            connection.inputStream
+            connection.disconnect()
+        } catch (e: Exception) {
+            Log.e("HomeActivity", "Chat error ${e.message}")
         }
     }
 }
