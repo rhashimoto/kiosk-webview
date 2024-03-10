@@ -85,7 +85,7 @@ class HomeActivity: AppCompatActivity(R.layout.home_activity) {
                 val bytes = scanRecord.getManufacturerSpecificData(220)
                 if (bytes != null && (bytes[3].toInt() and 1) != 0) {
                     // Brushing in progress.
-                    val secs = (bytes[5].toUInt() * 256u + bytes[6].toUInt()).toInt()
+                    val secs = (bytes[5].toUInt() * 60u + bytes[6].toUInt()).toInt()
                     Log.d("MainActivity", "rssi ${result.rssi} $secs s")
 
                     val b = Brushing(System.currentTimeMillis(), secs)
