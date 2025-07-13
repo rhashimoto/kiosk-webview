@@ -1,7 +1,6 @@
 import { LitElement, css, html } from 'lit';
 
 import './app-calendar.js';
-import './app-photos.js';
 
 const VIEWING_RANGES = [
   [[7, 0, 0, 0],[19, 0, 0, 0]],
@@ -41,8 +40,6 @@ class AppMain extends LitElement {
     }
   }
 
-  #intervalCounter = 0;
-
   constructor() {
     super();
     this.interval = 15_000;
@@ -50,20 +47,13 @@ class AppMain extends LitElement {
 
   firstUpdated() {
     this.#updateApp();
-    this.#populatePhotos();
   }
 
   #updateApp() {
     try {
       const now = Date.now();
       if (this.#isViewingTime(now)) {
-        if (this.#intervalCounter++ % 2) {
-          this.shadowRoot.getElementById('photos')
-            .dispatchEvent(new CustomEvent('show-photo'));
-          this.#show('photos');
-        } else {
-          this.#show('calendar');
-        }
+        this.#show('calendar');
       } else {
         this.#show('blackout');
       }
@@ -104,19 +94,6 @@ class AppMain extends LitElement {
         container.classList.add('retiring');
       }
     };
-  }
-
-  #populatePhotos() {
-    try {
-      console.log('populating photos');
-      this.shadowRoot.getElementById('photos')
-        .dispatchEvent(new CustomEvent('populate-photos'));
-    } finally {
-      const midnight = new Date().setHours(24, 0, 0, 0);
-      setTimeout(() => {
-        this.#populatePhotos();
-      }, midnight - Date.now());
-    }
   }
 
   static get styles() {
@@ -165,7 +142,6 @@ class AppMain extends LitElement {
   render() {
     return html`
       <div id="blackout" class="container"></div>
-      <app-photos id="photos" class="container"></app-photos>
       <app-calendar id="calendar" class="container"></app-calendar>
     `;
   }
